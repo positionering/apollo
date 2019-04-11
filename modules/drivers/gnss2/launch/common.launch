@@ -1,0 +1,7 @@
+<cyber>
+    <module>
+        <name>headingGnss</name>
+        <dag_conf>/apollo/modules/drivers/gnss2/dag/common.dag</dag_conf>
+        <process_name>headingGnss</process_name>
+    </module>
+</cyber>

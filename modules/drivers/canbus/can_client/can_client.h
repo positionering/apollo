@@ -123,7 +123,7 @@ class CanClient {
    * @brief Send messages
    * @param frames The messages to send.
    * @param frame_num The amount of messages to send.
-   * @return The status of the sending action which is defined by
+   * @return The status of the sending action which is defined byCanFrame
    *         apollo::common::ErrorCode.
    */
   virtual apollo::common::ErrorCode Send(const std::vector<CanFrame> &frames,

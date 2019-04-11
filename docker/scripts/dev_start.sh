@@ -203,6 +203,7 @@ function local_volumes() {
     case "$(uname -s)" in
         Linux)
             volumes="${volumes} -v /dev:/dev \
+				-v /tmp:/tmp \
                                 -v /media:/media \
                                 -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
                                 -v /etc/localtime:/etc/localtime:ro \
@@ -284,7 +285,7 @@ function main(){
         DOCKER_CMD="docker"
     fi
 
-    ${DOCKER_CMD} run -it \
+    ${DOCKER_CMD}  run -it \
         -d \
         --privileged \
         --name $APOLLO_DEV \
@@ -322,5 +323,33 @@ function main(){
     ok "Finished setting up Apollo docker environment. Now you can enter with: \nbash docker/scripts/dev_into.sh"
     ok "Enjoy!"
 }
+function main2(){
 
+APOLLO_DEV="realsense_dev_${USER}"
+   
+    info "Starting docker container \"${APOLLO_DEV}\" ..."
+
+    DOCKER_CMD="nvidia-docker"
+
+    ${DOCKER_CMD} run -it \
+        -d \
+        --privileged \
+        --name $APOLLO_DEV \
+        -e DISPLAY=$display \
+        -e DOCKER_USER="${USER}" \
+        -e USER=$USER \
+        -e DOCKER_USER_ID=$USER_ID \
+        -e DOCKER_GRP="$GRP" \
+        -e DOCKER_GRP_ID=$GRP_ID \
+        -e DOCKER_IMG="apolloauto/apollo:realsense_subdock" \
+        -e OMP_NUM_THREADS=1 \
+        $(local_volumes) \
+        --net host \
+        -w /apollo \
+        -v /dev/null:/dev/raw1394 \
+        "apolloauto/apollo:realsense_subdock" \
+        /bin/bash
+
+}
+main2
 main

@@ -95,6 +95,18 @@ new_local_repository(
     build_file = "third_party/pcl.BUILD",
     path = "/usr/local/include/pcl-1.7",
 )
+new_local_repository(
+    name = "apriltags_lib",
+    build_file = "third_party/libapril.BUILD",
+    path = "/usr/local/lib",
+)
+
+
+new_local_repository(
+    name = "apriltags_headers",
+    build_file = "third_party/april.BUILD",
+    path = "/usr/local/include",
+)
 
 new_local_repository(
     name = "glew",
@@ -234,6 +246,10 @@ new_local_repository(
     build_file = "third_party/fastrtps.BUILD",
     path = "/usr/local/fast-rtps",
 )
+
+
+
+
 
 # grpc
 http_archive(

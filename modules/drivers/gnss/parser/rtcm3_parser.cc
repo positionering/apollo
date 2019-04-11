@@ -33,6 +33,7 @@ constexpr bool is_zero(T value) {
 }  // namespace
 
 Parser *Parser::CreateRtcmV3(bool is_base_station) {
+  AERROR<<"SKAPAR RTCM3 PARSER!!!";
   return new Rtcm3Parser(is_base_station);
 }
 
@@ -153,6 +154,7 @@ void Rtcm3Parser::SetObservationTime() {
 }
 
 Parser::MessageType Rtcm3Parser::GetMessage(MessagePtr *message_ptr) {
+  AERROR<<"RTCM PARSER GREJEN****************************************";
   if (data_ == nullptr) {
     return MessageType::NONE;
   }

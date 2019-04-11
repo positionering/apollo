@@ -1,0 +1,7 @@
+<cyber>
+    <module>
+        <name>fakeGps</name>
+        <dag_conf>/apollo/modules/drivers/fakeGps/dag/common.dag</dag_conf>
+        <process_name>fakeGps</process_name>
+    </module>
+</cyber>

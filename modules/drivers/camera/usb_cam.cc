@@ -235,10 +235,10 @@ bool UsbCam::poll(const CameraImagePtr& raw_image) {
 
 bool UsbCam::open_device(void) {
   struct stat st;
-
+  //AERROR<<"Testar usb cam grej: "<<config_->camera_dev().c_str();
   if (-1 == stat(config_->camera_dev().c_str(), &st)) {
-    AERROR << "Cannot identify '" << config_->camera_dev() << "': " << errno
-           << ", " << strerror(errno);
+    //AERROR << "Cannot identify '" << config_->camera_dev() << "': " << errno
+    //       << ", " << strerror(errno);
     return false;
   }
 
@@ -329,10 +329,13 @@ bool UsbCam::init_device(void) {
   fmt.fmt.pix.pixelformat = pixel_format_;
   fmt.fmt.pix.field = V4L2_FIELD_INTERLACED;
 
+AERROR<<"AAAAAQQQQWEWWEWE";
   if (-1 == xioctl(fd_, VIDIOC_S_FMT, &fmt)) {
     AERROR << "VIDIOC_S_FMT";
     return false;
   }
+
+  AERROR<<"AAAAAQQQQWEWWEWE************************************************";
 
   /* Note VIDIOC_S_FMT may change width and height. */
 
@@ -411,9 +414,10 @@ bool UsbCam::set_adv_trigger() {
 }
 
 int UsbCam::xioctl(int fd, int request, void* arg) {
+
   int r = 0;
   do {
-    r = ioctl(fd, request, arg);
+  r = ioctl(fd, request, arg);
   } while (-1 == r && EINTR == errno);
 
   return r;
@@ -535,6 +539,7 @@ bool UsbCam::init_userp(unsigned int buffer_size) {
 
 bool UsbCam::start_capturing(void) {
   if (is_capturing_) {
+    AERROR <<"working_kinda";
     return true;
   }
 

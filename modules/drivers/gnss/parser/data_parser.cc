@@ -1,19 +1,3 @@
-/******************************************************************************
- * Copyright 2017 The Apollo Authors. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *****************************************************************************/
-
 #include "modules/drivers/gnss/parser/data_parser.h"
 
 #include <cmath>
@@ -33,6 +17,8 @@
 #include "modules/drivers/gnss/parser/parser.h"
 #include "modules/drivers/gnss/util/time_conversion.h"
 
+#include "modules/drivers/gnss2/proto/headingGnss.pb.h"
+
 namespace apollo {
 namespace drivers {
 namespace gnss {
@@ -46,6 +32,8 @@ namespace {
 
 constexpr double DEG_TO_RAD_LOCAL = M_PI / 180.0;
 const char *WGS84_TEXT = "+proj=latlong +ellps=WGS84";
+//const std::string UTM_TARGET =
+//    "+proj=utm +zone=10 +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs ";
 
 // covariance data for pose if can not get from novatel inscov topic
 static const boost::array<double, 36> POSE_COVAR = {
@@ -54,8 +42,20 @@ static const boost::array<double, 36> POSE_COVAR = {
 
 Parser *CreateParser(config::Config config, bool is_base_station = false) {
   switch (config.data().format()) {
+
+AERROR<<"Stream sak: "<<config.data().format();
+
     case config::Stream::NOVATEL_BINARY:
       return Parser::CreateNovatel(config);
+
+    case config::Stream::SBP_BINARY:
+      return Parser::CreateSBP();
+
+
+      case config::Stream::RTCM_V3:
+      return Parser::CreateRtcmV3(true);
+
+      
 
     default:
       return nullptr;
@@ -67,18 +67,40 @@ Parser *CreateParser(config::Config config, bool is_base_station = false) {
 DataParser::DataParser(const config::Config &config,
                        const std::shared_ptr<apollo::cyber::Node> &node)
     : config_(config), tf_broadcaster_(node), node_(node) {
-  std::string utm_target_param;
+
+ // std::string utm_target_param;
+ // nh.param("proj4_text", utm_target_param, UTM_TARGET);
 
   wgs84pj_source_ = pj_init_plus(WGS84_TEXT);
-  utm_target_ = pj_init_plus(config_.proj4_text().c_str());
+  utm_target_ = pj_init_plus( "+proj=utm +zone=32 +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs" /*config_.proj4_text().c_str()*/);
+
+
   gnss_status_.set_solution_status(0);
   gnss_status_.set_num_sats(0);
   gnss_status_.set_position_type(0);
   gnss_status_.set_solution_completed(false);
   ins_status_.set_type(InsStatus::INVALID);
-}
 
+
+
+
+}
+/*
+int updatesak = 0;
+
+void gps2_callback(
+    const std::shared_ptr<apollo::modules::drivers::gnss2::proto::Chatter>& msg) {
+
+			AERROR << "msgcontent->" << msg->content();
+}
+*/
 bool DataParser::Init() {
+
+
+        //while(apollo::cyber::OK()){
+
+       // }
+
   ins_status_.mutable_header()->set_timestamp_sec(
       cyber::Time::Now().ToSecond());
   gnss_status_.mutable_header()->set_timestamp_sec(
@@ -115,6 +137,24 @@ bool DataParser::Init() {
 }
 
 void DataParser::ParseRawData(const std::string &msg) {
+
+//gps2_callback(std::make_shared<apollo::modules::drivers::gnss2::proto::Chatter>());
+//const std::shared_ptr<apollo::modules::drivers::gnss2::proto::Chatter>* msges;
+//auto msges = std::make_shared<apollo::modules::drivers::gnss2::proto::Chatter>();
+//AERROR<<msges->content();
+
+/*
+//    auto listener_node = apollo::cyber::CreateNode("listener");
+// create listener
+auto listener =
+    listener_node->CreateReader<apollo::modules::drivers::gnss2::proto::Chatter>(
+        "channel/gps2", gps2_callback);
+
+
+     // while (cyber::OK() && updatesak == 0) {
+     // }
+    //  updatesak = 0;
+*/
   if (!init_flag_) {
     AERROR << "Data parser not init.";
     return;
@@ -256,8 +296,13 @@ void DataParser::PublishOdometry(const MessagePtr message) {
   // 1. pose xyz
   double x = ins->position().lon();
   double y = ins->position().lat();
+
+  //AERROR<<"x: "<<x<<" y: "<<y;
+
   x *= DEG_TO_RAD_LOCAL;
   y *= DEG_TO_RAD_LOCAL;
+
+  //AERROR<<"x: "<<x<<" y: "<<y<<" utm_target_: "<< utm_target_<<" wgs84pj_source_: "<<wgs84pj_source_;
 
   pj_transform(wgs84pj_source_, utm_target_, 1, 1, &x, &y, NULL);
 
@@ -347,4 +392,4 @@ void DataParser::GpsToTransformStamped(const std::shared_ptr<Gps> &gps,
 
 }  // namespace gnss
 }  // namespace drivers
-}  // namespace apollo
+} // namespace apollo

@@ -128,6 +128,7 @@ bool NtripStream::Connect() {
   if (std::strstr(reinterpret_cast<char*>(buffer), "ICY 200 OK\r\n")) {
     status_ = Stream::Status::CONNECTED;
     is_login_ = true;
+    AERROR<<"***************LYCKADES LOGGA IN*************";
     AINFO << "Ntrip login successfully.";
     return true;
   }
@@ -177,6 +178,7 @@ void NtripStream::Reconnect() {
 }
 
 size_t NtripStream::read(uint8_t* buffer, size_t max_length) {
+  //AERROR<<"LÄS STREAM GREJEN: "<<buffer;
   if (!tcp_stream_) {
     return 0;
   }
@@ -205,10 +207,14 @@ size_t NtripStream::read(uint8_t* buffer, size_t max_length) {
     Reconnect();
   }
 
+  //AERROR<<"ret: "<<ret;
   return ret;
 }
 
 size_t NtripStream::write(const uint8_t* buffer, size_t length) {
+
+AERROR<<"I NTRIP WRITE";
+
   if (!tcp_stream_) {
     return 0;
   }
@@ -239,6 +245,9 @@ Stream* Stream::create_ntrip(const std::string& address, uint16_t port,
                              const std::string& mountpoint,
                              const std::string& user, const std::string& passwd,
                              uint32_t timeout_s) {
+
+    AERROR<<"adress: "<<address<<" port: "<<port<<" mountpoint: "
+    <<mountpoint<<" user: "<<user<<" password: "<<passwd;
   return new NtripStream(address, port, mountpoint, user, passwd, timeout_s);
 }
 

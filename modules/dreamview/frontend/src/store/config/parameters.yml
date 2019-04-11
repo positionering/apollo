@@ -158,7 +158,7 @@ options:
     default: true
     menuId: perceptionObstacleInfo
   showPositionGps:
-    default: false
+    default: true
     menuId: positionGps
   showPositionLocalization:
     default: true
@@ -179,7 +179,7 @@ options:
     default: true
     menuId: mapLane
   showMapRoad:
-    default: false
+    default: true
     menuId: mapRoad
   showMapSignal:
     default: true

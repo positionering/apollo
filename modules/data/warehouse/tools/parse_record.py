@@ -38,7 +38,7 @@ from modules.localization.proto.localization_pb2 import LocalizationEstimate
 
 gflags.DEFINE_float('pos_sample_min_duration', 2, 'In seconds.')
 gflags.DEFINE_float('pos_sample_min_distance', 3, 'In meters.')
-gflags.DEFINE_integer('utm_zone_id', 10, 'UTM zone id.')
+gflags.DEFINE_integer('utm_zone_id', 32, 'UTM zone id.')
 gflags.DEFINE_string('utm_zone_letter', 'S', 'UTM zone letter.')
 
 kChassisChannel = '/apollo/canbus/chassis'

@@ -1,0 +1,16 @@
+# Define all coms in DAG streaming.
+    module_config {
+    module_library : "/apollo/bazel-bin/modules/drivers/fakeGps/lib_fake_gps.so"
+    components {
+        class_name : "fakeGps"
+        config {
+            name : "fakeGps"
+            readers {
+                channel: "/apollo/prediction"
+            }
+            readers {
+                channel: "/apollo/test"
+            }
+        }
+      }
+    }

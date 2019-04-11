@@ -21,6 +21,7 @@
 #include "modules/canbus/vehicle/lincoln/lincoln_vehicle_factory.h"
 #include "modules/canbus/vehicle/transit/transit_vehicle_factory.h"
 #include "modules/canbus/vehicle/ge3/ge3_vehicle_factory.h"
+#include "modules/canbus/vehicle/twizy/twizy_vehicle_factory.h"
 
 namespace apollo {
 namespace canbus {
@@ -41,6 +42,13 @@ void VehicleFactory::RegisterVehicleFactory() {
   Register(VehicleParameter::GE3, []() -> AbstractVehicleFactory * {
     return new Ge3VehicleFactory();
   });
+  
+    // register the new vehicle here.
+  Register(VehicleParameter::RENAULT_TWIZY, []() -> AbstractVehicleFactory* {
+    return new TwizyVehicleFactory();
+  });
+  
+  
 }
 
 std::unique_ptr<AbstractVehicleFactory> VehicleFactory::CreateVehicle(

@@ -108,7 +108,7 @@ DEFINE_string(
     ant_imu_leverarm_file,
     "/apollo/modules/localization/msf/params/gnss_params/ant_imu_leverarm.yaml",
     "Ant to imu leferarm.");
-DEFINE_bool(gnss_debug_log_flag, false, "Gnss Debug switch.");
+DEFINE_bool(gnss_debug_log_flag, true, "Gnss Debug switch.");
 DEFINE_bool(if_imuant_from_file, true, "Use imu ant from gnss configure file.");
 DEFINE_double(imu_to_ant_offset_x, 0.0, "Imu ant offset x");
 DEFINE_double(imu_to_ant_offset_y, 0.0, "Imu ant offset y");

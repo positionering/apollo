@@ -64,6 +64,7 @@ void RTKLocalization::GpsCallback(
     }
   }
 
+/*
   {
     std::unique_lock<std::mutex> lock(gps_status_list_mutex_);
 
@@ -75,7 +76,7 @@ void RTKLocalization::GpsCallback(
       return;
     }
   }
-
+*/
   // publish localization messages
   PrepareLocalizationMsg(*gps_msg, &last_localization_result_,
                          &last_localization_status_result_);
@@ -249,6 +250,9 @@ void RTKLocalization::ComposeLocalizationMsg(
     if (pose.has_position()) {
       // position
       // world frame -> map frame
+     // AERROR<<"X mutable: " << pose.position().x();
+     // AERROR<<"map_offset_[0]: "<< map_offset_[0];
+
       mutable_pose->mutable_position()->set_x(pose.position().x() -
                                               map_offset_[0]);
       mutable_pose->mutable_position()->set_y(pose.position().y() -

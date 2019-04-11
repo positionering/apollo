@@ -164,7 +164,7 @@ Status ControlComponent::ProduceControlCommand(
   Status status = CheckInput(&local_view_);
   // check data
 
-  if (!status.ok()) {
+  /*if (!status.ok()) {
     AERROR_EVERY(100) << "Control input data failed: "
                       << status.error_message();
     control_command->mutable_engage_advice()->set_advice(
@@ -190,7 +190,7 @@ Status ControlComponent::ProduceControlCommand(
       control_command->mutable_engage_advice()->set_advice(
           apollo::common::EngageAdvice::READY_TO_ENGAGE);
     }
-  }
+  }*/
 
   // check estop
   estop_ = control_conf_.enable_persistent_estop()

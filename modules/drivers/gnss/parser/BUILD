@@ -5,6 +5,7 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "gnss_parser",
     deps = [
+    	":sbp_parser",
         ":data_parser",
         ":novatel_parser",
         ":rtcm_parsers",
@@ -19,6 +20,7 @@ cc_library(
         "parser.h",
     ],
     deps = [
+    	":sbp_parser",
         ":novatel_parser",
         "//cyber",
         "//modules/common/adapters:adapter_gflags",
@@ -47,6 +49,26 @@ cc_library(
         "//modules/drivers/gnss/proto:gnss_proto",
         "//modules/drivers/gnss/third_party:rtcm",
         "//modules/drivers/gnss/util:gnss_util",
+    ],
+)
+
+
+cc_library(
+    name = "sbp_parser",
+    srcs = ["sbp_parser.cpp"],
+    hdrs = [
+        "parser.h",
+        "rtcm_decode.h",
+    ],
+    deps = [
+        "//cyber",
+        "//modules/common/adapters:adapter_gflags",
+        "//modules/drivers/gnss/proto:gnss_proto",
+        "//modules/drivers/gnss/third_party:rtcm",
+        "//modules/drivers/gnss/util:gnss_util",
+        "//modules/drivers/gnss/libsbp:libsbp",
+    	"//modules/drivers/gnss/kalman:kalman",
+    	"//modules/drivers/gnss2/proto:heading_gnss_cc_proto",
     ],
 )
 

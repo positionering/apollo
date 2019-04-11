@@ -116,6 +116,8 @@ void EsdCanClient::Stop() {
 // Synchronous transmission of CAN messages
 ErrorCode EsdCanClient::Send(const std::vector<CanFrame> &frames,
                              int32_t *const frame_num) {
+
+                      //         AERROR<<"fail?";
   CHECK_NOTNULL(frame_num);
   CHECK_EQ(frames.size(), static_cast<size_t>(*frame_num));
 
@@ -131,6 +133,7 @@ ErrorCode EsdCanClient::Send(const std::vector<CanFrame> &frames,
 
   // Synchronous transmission of CAN messages
   int32_t ret = canWrite(dev_handler_, send_frames_, frame_num, nullptr);
+  //AERROR<<dev_handler_ <<" "<< frame_num;
   if (ret != NTCAN_SUCCESS) {
     AERROR << "send message failed, error code: " << ret << ", "
            << GetErrorString(ret);

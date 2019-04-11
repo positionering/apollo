@@ -30,7 +30,9 @@ Chassis::DrivingMode VehicleController::driving_mode() {
 }
 
 void VehicleController::set_driving_mode(
+
     const Chassis::DrivingMode &driving_mode) {
+AERROR<<"I VECHILE CONTROLLER";
   std::lock_guard<std::mutex> lock(mode_mutex_);
   driving_mode_ = driving_mode;
 }
@@ -58,6 +60,7 @@ ErrorCode VehicleController::SetDrivingMode(
 
   switch (driving_mode) {
     case Chassis::COMPLETE_AUTO_DRIVE: {
+      AERROR<<"COMEPLETE_AUTO_DRIVE TILLÅTS";
       if (EnableAutoMode() != ErrorCode::OK) {
         AERROR << "Fail to EnableAutoMode.";
         return ErrorCode::CANBUS_ERROR;
@@ -101,7 +104,7 @@ ErrorCode VehicleController::Update(const ControlCommand &command) {
   control_command.CopyFrom(command);
 
   // execute action to tranform driving mode
-  if (control_command.has_pad_msg() && control_command.pad_msg().has_action()) {
+  /*if (control_command.has_pad_msg() && control_command.pad_msg().has_action()) {
     AINFO << "Canbus received pad msg:"
           << control_command.pad_msg().ShortDebugString();
     Chassis::DrivingMode mode = Chassis::COMPLETE_MANUAL;
@@ -121,7 +124,10 @@ ErrorCode VehicleController::Update(const ControlCommand &command) {
       }
     }
     SetDrivingMode(mode);
+    
   }
+
+
 
   if (driving_mode_ == Chassis::COMPLETE_AUTO_DRIVE ||
       driving_mode_ == Chassis::AUTO_SPEED_ONLY) {
@@ -150,7 +156,30 @@ ErrorCode VehicleController::Update(const ControlCommand &command) {
     SetTurningSignal(control_command);
     SetBeam(control_command);
   }
+*/
 
+/* OBS! Fulhack! vi sätter throttle till det som 
+  egentligen ska vara speed, för att slippa implementera 
+  egna funktioner i canbusmodulens vehicle controller.*/
+    //Throttle(control_command.throttle());
+
+    Throttle(control_command.debug().simple_lon_debug().speed_reference());
+    //Throttle(5); förskö att styra gasen
+
+    //Brake(control_command.brake());
+
+    //AERROR<<"HEJ LINAN";tw
+    const double steering_rate_threshold = 1.0;
+    if (control_command.steering_rate() > steering_rate_threshold) {
+      Steer( control_command.steering_target(), control_command.steering_rate());
+      
+      //Steer(-control_command.debug().simple_lat_debug().lateral_error()*30, control_command.steering_rate());
+
+    } else {
+      Steer( control_command.steering_target(), control_command.steering_rate());
+  
+      //Steer(-control_command.debug().simple_lat_debug().lateral_error()*30);
+    }
   return ErrorCode::OK;
 }
 

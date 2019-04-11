@@ -49,6 +49,8 @@ extern "C" {
 #include <libavutil/mem.h>
 #include <libswscale/swscale.h>
 #include <linux/videodev2.h>
+#include <linux/uvcvideo.h>
+#include <linux/usb/video.h>
 }
 
 #include <libavcodec/version.h>

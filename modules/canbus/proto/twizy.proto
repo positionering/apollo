@@ -1,0 +1,43 @@
+syntax = "proto2";
+
+package apollo.canbus;
+
+import "modules/canbus/proto/chassis.proto";
+
+message Steeringangle_0c0h_c0 {
+// Report Message
+  // [] [0|0]
+  optional int32 sas_chcksum = 1;
+  // [] [0|0]
+  optional int32 msg_count = 2;
+  // [] [0|0]
+  optional int32 lws_stat = 3;
+  // [°/s] [0|0]
+  optional double lws_speed = 4;
+  // [°] [-40|40]
+  optional double lws = 5;
+}
+
+message Currentspeed_599 {
+// Report Message
+  // [] [0|0]
+  optional double curr_speed = 1;
+}
+
+message Gear_and_breakpedal_59b {
+// Report Message
+  // [] [0|0]
+  optional bool brake_pedalstatus = 1;
+  // [] [0|0]
+  optional bool gear_r = 2;
+  // [] [0|0]
+  optional bool gear_n = 3;
+  // [] [0|0]
+  optional bool gear_d = 4;
+}
+
+message Twizy {
+  optional Steeringangle_0c0h_c0 steering_angle = 1; // report message
+  optional Currentspeed_599 curr_speed = 2; // report message
+  optional Gear_and_breakpedal_59b gear_and_pedal = 3; // report message
+}

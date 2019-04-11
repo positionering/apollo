@@ -170,6 +170,10 @@ void CanbusComponent::PublishChassis() {
   Chassis chassis = vehicle_controller_->chassis();
   common::util::FillHeader(node_->Name(), &chassis);
   chassis_writer_->Write(std::make_shared<Chassis>(chassis));
+  //MÖJLIGTVIS FEL
+  //AERROR<<"DRIVING MODE SAKEN: "<<Chassis::COMPLETE_AUTO_DRIVE;
+  chassis.set_driving_mode(Chassis::COMPLETE_AUTO_DRIVE);
+  //------------------------------------------------------------
   ADEBUG << chassis.ShortDebugString();
 }
 

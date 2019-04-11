@@ -249,6 +249,7 @@ void OnlineLocalizationExpert::SetLocalizationStatus(
         }
         break;
       default:
+      
         if (msf_status_.local_lidar_status() ==
             apollo::localization::MSF_LOCAL_LIDAR_NORMAL) {
           msf_status_.set_msf_running_status(

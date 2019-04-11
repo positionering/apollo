@@ -77,7 +77,7 @@ message Chassis {
 
   optional bool wiper = 19;
   optional bool disengage_status = 20 [deprecated = true];
-  optional DrivingMode driving_mode = 21 [default = COMPLETE_MANUAL];
+  optional DrivingMode driving_mode = 21 [default = COMPLETE_AUTO_DRIVE];
   optional ErrorCode error_code = 22 [default = NO_ERROR];
   optional GearPosition gear_location = 23;
 

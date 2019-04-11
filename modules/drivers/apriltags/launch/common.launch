@@ -1,0 +1,7 @@
+<cyber>
+    <module>
+        <name>apriltags</name>
+        <dag_conf>/apollo/modules/drivers/apriltags/dag/common.dag</dag_conf>
+        <process_name>apriltags</process_name>
+    </module>
+</cyber>

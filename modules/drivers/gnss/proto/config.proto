@@ -14,6 +14,9 @@ message Stream {
 
     UBLOX_TEXT = 20;
     UBLOX_BINARY = 21;
+    
+    SBP_TEXT = 30;
+    SBP_BINARY = 31;
   }
   optional Format format = 1;
 
@@ -61,6 +64,9 @@ message NovatelConfig {
 message UbloxConfig {
 }
 
+message SBPConfig {
+}
+
 enum ImuType {
   // We currently use the following IMUs. We'll extend this list when a new IMU
   // is introduced.
@@ -105,6 +111,7 @@ message Config {
   oneof device_config {
     NovatelConfig novatel_config = 7;
     UbloxConfig ublox_config = 8;
+    SBPConfig sbp_config = 15;
   }
 
   enum RtkSolutionType {

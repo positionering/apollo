@@ -17,6 +17,7 @@ proto_library(
         "lexus.proto",
         "transit.proto",
         "vehicle_parameter.proto",
+        "twizy.proto",
     ],
     deps = [
         "//modules/common/proto:drive_state_proto_lib",

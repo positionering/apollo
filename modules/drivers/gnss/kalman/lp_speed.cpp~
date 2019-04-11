@@ -1,0 +1,70 @@
+// Written by the Twizy Perception team at Chalmers 2018.
+// Copyright 2018
+
+#include "lp_speed.h"
+#include <math.h>
+#include "cyber/cyber.h"
+
+
+	LP_speed::LP_speed(int posBufferSize){
+		this->posBufferSize = posBufferSize;
+		this->posBufferSpeed = 0;
+		this->speed = 0;
+		this->nrOfSamples = 0;
+
+		for (int i = 0; i<posBufferSize; i++){
+			this->posBufferX[i] = 0;
+			this->posBufferY[i] = 0;
+			this->posBufferTime[i] = 0;
+		}
+		return;
+	}
+
+	double LP_speed::getSpeed(){
+		if (nrOfSamples != posBufferSize || speed<0.1){ 
+			return 0;
+		}
+		return speed;
+	}
+
+	void LP_speed::addPosPoint(double x, double y, double time){
+			// add to buffers
+		for (int i = posBufferSize-1; i>0; i--){
+			posBufferX[i] = posBufferX[i-1];
+			posBufferY[i] = posBufferY[i-1];
+			posBufferTime[i] = posBufferTime[i-1];
+		}
+		posBufferX[0] = x;
+		posBufferY[0] = y;
+		posBufferTime[0] = time;
+
+		if(nrOfSamples<posBufferSize) nrOfSamples++;
+
+
+		//for (int i = 0; i<posBufferSize; i++){
+			//ROS_WARN_STREAM("x[" << i  << "]" << posBufferX[i] << " y[" << i  << "]" << posBufferY[i]);
+		//}
+
+		// calculate new buffer heading
+		double speedSum = 0;
+		for(int i=0; i<posBufferSize-1; i++){
+			double dx = posBufferX[i] - posBufferX[i+1];
+			double dy = posBufferY[i] - posBufferY[i+1];
+			double dt = posBufferTime[i] - posBufferTime[i+1];
+			if(dt<0.01 || dt > 0.5) dt = 0.1;
+			double speedVec = sqrt(dx*dx + dy*dy)/dt;
+			speedSum += speedVec;
+		}
+
+		posBufferSpeed = speedSum/(posBufferSize-1);
+	
+		speed = 0.2*posBufferSpeed + 0.8*speed;
+		//ROS_WARN_STREAM("posBufferSpeed: " << posBufferSpeed);
+
+		//ROS_WARN_STREAM("Speed: " << speed);
+
+	
+
+		return;
+
+	}

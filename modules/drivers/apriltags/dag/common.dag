@@ -1,0 +1,16 @@
+# Define all coms in DAG streaming.
+    module_config {
+    module_library : "/apollo/bazel-bin/modules/drivers/apriltags/libapril_tags.so"
+    components {
+        class_name : "aprilTags"
+        config {
+            name : "apriltags"
+            readers {
+                channel: "/apollo/prediction"
+            }
+            readers {
+                channel: "/apollo/test"
+            }
+        }
+      }
+    }

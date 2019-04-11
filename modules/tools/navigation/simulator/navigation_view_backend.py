@@ -50,7 +50,7 @@ mobileye_pb = None
 perception_pb = None
 planning_pb = None
 heading = None
-projector = pyproj.Proj(proj='utm', zone=10, ellps='WGS84')
+projector = pyproj.Proj(proj='utm', zone=32, ellps='WGS84')
 urllib3.contrib.pyopenssl.inject_into_urllib3()
 http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where())
 
@@ -75,7 +75,7 @@ def localization_callback(localization_pb):
     x = localization_pb.pose.position.x
     y = localization_pb.pose.position.y
     heading = localization_pb.pose.heading
-    zone = 10
+    zone = 32
     lon, lat = projector(x, y, inverse=True)
 
 

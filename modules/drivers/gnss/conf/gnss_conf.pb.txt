@@ -1,65 +1,45 @@
 data {
-    format: NOVATEL_BINARY
-    serial {
-        device: "/dev/novatel0"
-        baud_rate: 115200
+    format: SBP_BINARY
+    tcp {
+        address: "192.168.0.222"
+        port: 55555
     }
 }
+
 
 #rtk_from {
 #    format: RTCM_V3
 #    ntrip {
-        #address: "111.111.111.11"
-        #port: 0000
-        #mount_point: "yourport"
-        #user: "username"
-        #password: "password"
-        #timeout_s: 5
+#        address: "192.71.190.141"
+#        port: 8500
+#        mount_point: "DGNSS"
+#        user: "708536542"
+#        password: "245635"
+#        timeout_s: 5
 #    }
 #    push_location: true
 #}
 
-rtk_to {
-    format: NOVATEL_BINARY
-    serial {
-        device: "/dev/novatel1"
-        baud_rate: 115200
-    }
-}
+#ANVÄNDARNAMN1: 708536441
+#LÖSENORD1: 144635
 
-command {
-    format: NOVATEL_BINARY
-    serial {
-        device: "/dev/novatel2"
-        baud_rate: 115200
-    }
-}
-
-rtk_solution_type: RTK_RECEIVER_SOLUTION
-imu_type: ADIS16488
-proj4_text: "+proj=utm +zone=10 +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
-
-tf {
-    frame_id: "world"
-    child_frame_id: "novatel"
-    enable: true
-}
-
-# If given, the driver will send velocity info into novatel one time per second
-wheel_parameters: "SETWHEELPARAMETERS 100 1 1\r\n"
+#services.telenor.se
+#användarnamn2: 708536542
+#lösenord2: 245635
 
 gpsbin_folder: "/apollo/data/gpsbin"
+
 
 #########################################################################
 # notice: only for debug, won't configure device through driver online!!!
 #########################################################################
-# login_commands: "UNLOGALL THISPORT\r\n"
+login_commands: "UNLOGALL THISPORT\r\n"
 # login_commands: "LOG COM2 GPRMC ONTIME 1.0 0.25\r\n"
 # login_commands: "EVENTOUTCONTROL MARK2 ENABLE POSITIVE 999999990 10\r\n"
 # login_commands: "EVENTOUTCONTROL MARK1 ENABLE POSITIVE 500000000 500000000\r\n"
 # login_commands: "LOG GPGGA ONTIME 1.0\r\n"
 
-# login_commands: "log bestgnssposb ontime 1\r\n"
+ login_commands: "log bestgnssposb ontime 1\r\n"
 # login_commands: "log bestgnssvelb ontime 1\r\n"
 # login_commands: "log bestposb ontime 1\r\n"
 # login_commands: "log INSPVAXB ontime 0.5\r\n"

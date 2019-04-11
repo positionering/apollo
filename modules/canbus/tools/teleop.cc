@@ -352,6 +352,7 @@ class Teleop {
   }
 
   void ResetControlCommand() {
+    AERROR<<"---------------HAMNAR I RESET CONTROL COMMAND--------------";
     control_command_.Clear();
     control_command_.set_throttle(0.0);
     control_command_.set_brake(0.0);

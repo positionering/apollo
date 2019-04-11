@@ -211,8 +211,9 @@ Status LatController::Init(const ControlConf *control_conf) {
   matrix_q_ = Matrix::Zero(matrix_size, matrix_size);
 
   int q_param_size = control_conf_->lat_controller_conf().matrix_q_size();
-  int reverse_q_param_size =
-      control_conf_->lat_controller_conf().reverse_matrix_q_size();
+ // int reverse_q_param_size =
+  //    control_conf_->lat_controller_conf().reverse_matrix_q_size();
+  int reverse_q_param_size = 4;
   if (matrix_size != q_param_size || matrix_size != reverse_q_param_size) {
     const auto error_msg =
         StrCat("lateral controller error: matrix_q size: ", q_param_size,

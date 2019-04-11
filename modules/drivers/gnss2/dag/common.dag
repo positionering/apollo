@@ -1,0 +1,16 @@
+# Define all coms in DAG streaming.
+    module_config {
+    module_library : "/apollo/bazel-bin/modules/drivers/gnss2/libheading_gnss.so"
+    components {
+        class_name : "headingGnss"
+        config {
+            name : "headingGnss"
+            readers {
+                channel: "/apollo/localization"
+            }
+            readers {
+                channel: "/apollo/test"
+            }
+        }
+      }
+    }
