@@ -163,17 +163,18 @@ tagId = 0;
        // AERROR<<"yaw? " << pose.R->data[(2*pose.ncols) + 0];
        // AERROR<<"yaw? " << pose.R->data[3*3+1];
        // AERROR<<"yaw? " << pose.R->data[3*3+1];
+       double x = pose.t->data[0];
+       double z = pose.t->data[2];
         double phi = atan2(-pose.R->data[6],sqrt(pose.R->data[7]*pose.R->data[7]+pose.R->data[8]*pose.R->data[8]));
-        AERROR<< " Grader mot kamera -> " << phi * 180 / 3.1415926535897932384626433832795028841971693993 << 
-              " Längd från tag" << dist_2D << " X -> " << pose.t->data[0] << " Z -> " << pose.t->data[2];
-        double z_1 = dist_2D * cos(phi);
-        double x_1 = -dist_2D * sin(phi);
+        //AERROR<< " Grader mot kamera -> " << phi * 180 / 3.1415926535897932384626433832795028841971693993 << 
+              //" Längd från tag" << dist_2D << " X -> " << pose.t->data[0] << " Z -> " << pose.t->data[2];
+        double x_offset = cos(phi)*x-sin(phi)*z;
+        double z_offset = sin(phi)*x+cos(phi)*z;
 
-        //AERROR<<"z_1: " << z_1; 
-        //AERROR<<"x_1: " << x_1;
+        AERROR<<"   z_1: " << z_offset <<" x_1: " << x_offset;
 
 			tagId = det->id; 
-
+      
       // index = row*ncols + col.
 
        // AERROR<<"R sakerna: "<<pose.R->nrows<<" "<<pose.R->ncols;
@@ -184,13 +185,11 @@ tagId = 0;
   }
     static uint64_t seq = 0;
     auto msg = std::make_shared<apriltags>();
-    msg->set_timestamp(Time::Now().ToNanosecond());
+  
     msg->set_tag_id(tagId);
-    msg->set_yaw(seq++);
-    msg->set_roll(seq++);
-    msg->set_pitch(seq++);
-    msg->set_total_dist(dist);
-    talker_apriltags->Write(msg);
+    msg->set_x_offset(x_offset);
+    msg->set_z_offset(z_offset);
+    
   }
 
 
