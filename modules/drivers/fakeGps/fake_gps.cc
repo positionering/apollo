@@ -1,36 +1,33 @@
-
-#include "modules/drivers/fakeGps/fake_gps.h"
-
-#include "cyber/class_loader/class_loader.h"
-#include "cyber/component/component.h"
-
-#include "cyber/cyber.h"
-
-
+#include <proj_api.h>
+#include "Eigen/Geometry"
 #include <cstdlib>
 #include <iostream>
 #include <string>
+#include <vector>
+#include <algorithm>
+#include <sstream>
+#include <fstream>
 
-#include "modules/drivers/fakeGps/proto/fakeGps.pb.h"
+
+#include "cyber/component/component.h"
+#include "cyber/cyber.h"
+#include "cyber/class_loader/class_loader.h"
 #include "cyber/time/rate.h"
 #include "cyber/time/time.h"
 
 
+#include "modules/drivers/fakeGps/fake_gps.h"
+#include "modules/drivers/fakeGps/proto/fakeGps.pb.h"
 #include "modules/drivers/gnss/proto/gnss_best_pose.pb.h"
 #include "modules/drivers/gnss/proto/gnss_raw_observation.pb.h"
 #include "modules/drivers/gnss/proto/heading.pb.h"
 #include "modules/localization/proto/imu.pb.h"
 #include "modules/drivers/gnss/proto/ins.pb.h"
-
-#include "Eigen/Geometry"
-#include <proj_api.h>
-
+#include "modules/drivers/apriltags/proto/aprilTags.pb.h"
 #include "modules/localization/proto/gps.pb.h"
 #include "modules/localization/proto/imu.pb.h"
-
 #include "modules/common/adapters/adapter_gflags.h"
 
-#include "modules/drivers/apriltags/proto/aprilTags.pb.h"
 
 using apollo::cyber::Rate;
 using apollo::cyber::Time;
@@ -50,49 +47,71 @@ projPJ utm_target_ = pj_init_plus( "+proj=utm +zone=32 +ellps=WGS84 +towgs84=0,0
 
 auto talker_node = apollo::cyber::CreateNode("talker");
 
-
 std::shared_ptr<apollo::cyber::Writer<apollo::localization::Gps>>
       gps_writer_ = talker_node->CreateWriter<Gps>(FLAGS_gps_topic);
-      
       
 std::shared_ptr<apollo::cyber::Writer<apollo::localization::CorrectedImu>>
       corrimu_writer_ = talker_node->CreateWriter<CorrectedImu>(FLAGS_imu_topic);;
 
-double a[12][3] = {  
-   {677498.87, 6397920.123, 0} ,   /*  ARRAY AV X, Y COORDINATER */
-   {4, 5, 0} ,   /*  initializers for row indexed by 1 */
-   {8, 9, 0} ,   /*  initializers for row indexed by 2 */
-   {1, 2, 0} ,
-   {1, 2, 0} ,
-   {1, 2, 0} ,
-   {677498.87, 6397920.123, 0} ,   /*  ARRAY AV X, Y COORDINATER */
-   {4, 5, 0} ,   /*  initializers for row indexed by 1 */
-   {8, 9, 0} ,   /*  initializers for row indexed by 2 */
-   {1, 2, 0} ,
-   {1, 2, 0} ,
-   {1, 2, 0}
-};
+std::vector< std::vector<double> > tags;
+
+double x, y, c_x, c_y, c_xOffset, c_yOffset, a_xOffset, a_zOffset, cameraAngle;
+
+double angleOffset = 0;
+double currHead = 0;
+double cameraAngleOffset = 0;
+
+int detec = 0;
+int tagId = 0;
 
 template <class T>
 inline T *As(::google::protobuf::Message *message_ptr) {
   return dynamic_cast<T *>(message_ptr);
 }
 
-double x = 0;
-double y = 0;
-int aprilTag = 0;
-double tagDist  = 0; 
+
+
+void theHeading(){
+  
+  if(detec) {
+    currHead = angleOffset + tags[tagId][2]*DEG_TO_RAD_LOCAL;
+    cameraAngleOffset = currHead - cameraAngle;
+  }
+  else {
+    currHead = cameraAngleOffset+cameraAngle;
+  }
+}
+
+void updatePos(){
+
+  if(detec){
+    x = tags[tagId][0] + a_xOffset;
+    y = tags[tagId][1] + a_zOffset;
+    c_xOffset = c_x;
+    c_yOffset = c_y;
+  } else {
+    
+    // clockwise
+    x = x + (c_x - c_xOffset)*cos(cameraAngleOffset) + (c_y - c_yOffset)*sin(cameraAngleOffset);
+    y = y + (-c_x - c_xOffset)*sin(cameraAngleOffset) + (c_y - c_yOffset)*cos(cameraAngleOffset);
+
+    // counterclockwise beroende på ifall vinkeln är negativ? osäker:
+    //x = x + (c_x - c_xOffset)*cos(cameraAngleOffset) + (c_y - c_yOffset)*sin(cameraAngleOffset);
+    //y = y + (-c_x - c_xOffset)*sin(cameraAngleOffset) + (c_y - c_yOffset)*cos(cameraAngleOffset);
+
+  }
+}
+
 
 void PublishOdometry(/*const MessagePtr message*/) {
 
   //Ins *ins = As<Ins>(message);
   auto gps = std::make_shared<apollo::localization::Gps>();
-
   //double unix_sec = apollo::drivers::util::gps2unix(ins->measurement_time());
-  
+
   gps->mutable_header()->set_timestamp_sec(Time::Now().ToSecond());
   auto *gps_msg = gps->mutable_localization();
-
+  
   // 1. pose xyz
   
   //double x = 0; //ins->position().lon();
@@ -100,9 +119,10 @@ void PublishOdometry(/*const MessagePtr message*/) {
 
   //pj_transform(wgs84pj_source_, utm_target_, 1, 1, &x, &y, NULL);
 
-  gps_msg->mutable_position()->set_x(a[aprilTag][0]);
-  gps_msg->mutable_position()->set_y(a[aprilTag][1]);
-  gps_msg->mutable_position()->set_z(a[aprilTag][2]);
+  updatePos();
+  gps_msg->mutable_position()->set_x(x);
+  gps_msg->mutable_position()->set_y(y);
+  gps_msg->mutable_position()->set_z(0);
 
   // 2. orientation
   /*Eigen::Quaterniond q =
@@ -124,8 +144,6 @@ void PublishOdometry(/*const MessagePtr message*/) {
 }
 
 
-
-
 void PublishCorrimu(/*const MessagePtr message*/) {
   //Ins *ins = As<Ins>(message);
   auto imu = std::make_shared<CorrectedImu>();
@@ -144,67 +162,95 @@ void PublishCorrimu(/*const MessagePtr message*/) {
 
   imu_msg->mutable_euler_angles()->set_x(1/*ins->euler_angles().x()*/);
   imu_msg->mutable_euler_angles()->set_y(1/*-ins->euler_angles().y()*/);
-  imu_msg->mutable_euler_angles()->set_z(1/*ins->euler_angles().z()*/ -
-                                         90 * DEG_TO_RAD_LOCAL);
+  
+  //HEADING
+  imu_msg->mutable_euler_angles()->set_z(currHead /* - 90 * DEG_TO_RAD_LOCAL*/);
+//
 
   corrimu_writer_->Write(imu);
 }
 
 void aprilCallBack(
     const std::shared_ptr<apollo::modules::drivers::apriltags::proto::apriltags>& msg) {
-  AERROR << "Distance -> " << msg->total_dist() << " ID -> " << msg->tag_id();
-  int tagId = msg->tag_id();
-  int tagDist = msg->total_dist();
+
+  tagId = msg->tag_id();
+  detec = msg->detec();
+  a_xOffset = msg->x_offset();
+  a_zOffset = msg->z_offset();
+  angleOffset = msg->angle_offset();
+
 }
 
 bool fakeGps::Init() {
+  
   AERROR << "Commontest component init";
+
+  std::ifstream file("/apollo/modules/drivers/fakeGps/file.txt");
+  std::ifstream filec("/apollo/modules/drivers/fakeGps/file.txt");
+
+  int sz = 1+std::count(std::istreambuf_iterator<char>(filec), 
+           std::istreambuf_iterator<char>(), '\n');
+
+  AERROR<<sz;
+  if(file.is_open())
+  {
+      double dubletas;
+      for (int i = 0; i < sz; i++)
+      {
+          std::vector<double> temp;
+          for (int i = 0; i < 3; i++)
+          {
+              file >> dubletas;
+              temp.push_back(dubletas);
+          }
+          tags.push_back(temp);
+      }
+
+  }
   
   // create talker
-auto talker = talker_node->CreateWriter<Chatter>("channel/chatter");
+  auto talker = talker_node->CreateWriter<Chatter>("channel/chatter");
   Rate rate(0.1);
 
 
- auto listener_node = apollo::cyber::CreateNode("listener");
+  auto listener_node = apollo::cyber::CreateNode("listener");
 
-  auto listener =
-      listener_node->CreateReader<apollo::modules::drivers::apriltags::proto::apriltags>(
-"channel/apriltags", aprilCallBack);
+  auto listener = listener_node->CreateReader<apollo::modules::drivers::apriltags::proto::apriltags>(
+                                                     "channel/apriltags", aprilCallBack);
 
-int MAX_BUF = 128;
-int fd;
-std::string myfifo = "/tmp/myfifo";
-char buf[MAX_BUF];
+  int MAX_BUF = 128;
+  int fd;
+  std::string myfifo = "/tmp/myfifo";
+  char buf[MAX_BUF];
 
   while (apollo::cyber::OK()) {
     fd = open(myfifo.c_str(), O_RDONLY /* | O_NONBLOCK */);
     read(fd, buf, MAX_BUF);
     close(fd);
-
-
-
-  std::string bufS (buf);
-  std::size_t sz1,sz2;  
+    std::string bufS (buf);
+    std::size_t sz1,sz2;  
 
   
-  //AERROR << bufS << " omvandlad " << buf;
+    c_x = std::stod (bufS,&sz1);
+    c_y = std::stod (bufS.substr(sz1), &sz2);
+    cameraAngle = std::stod (bufS.substr(sz1 + sz2));
+     
+    
+    theHeading();
+    updatePos();
+    
+    AERROR << " Heading -> " << currHead*RAD_TO_DEG << " X-led -> " << x << " Y-led -> " << y;
 
-  float xPos = std::stof (bufS,&sz1);
-  float zPos = std::stof (bufS.substr(sz1), &sz2);
-  float yRot = std::stof (bufS.substr(sz1 + sz2));
-
-AERROR<<"X pos -> "<<xPos << " z Pos -> "<<zPos<<" y rot -> "<<yRot; 
-
-  PublishOdometry();
-	PublishCorrimu();
-	static uint64_t seq = 0;
+    PublishOdometry();
+	  PublishCorrimu();
+	  
+    static uint64_t seq = 0;
     auto msg = std::make_shared<Chatter>();
     msg->set_timestamp(Time::Now().ToNanosecond());
     msg->set_lidar_timestamp(Time::Now().ToNanosecond());
     msg->set_seq(seq++);
     msg->set_content(bufS);
     talker->Write(msg);
-    AINFO << "talker sent a message!";
 
   }
   return true;

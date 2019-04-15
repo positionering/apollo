@@ -21,8 +21,10 @@ message Driver {
 };
 
 message apriltags {
-    optional int64 x_offset = 1;
-    optional int64 z_offset = 2;
+    optional uint64 timestamp = 1;
+    optional int64 detec = 2; 
     optional int64 tag_id = 3;
-   
+    optional double x_offset = 4;
+    optional double z_offset = 5;
+    optional double angle_offset = 6;
 };

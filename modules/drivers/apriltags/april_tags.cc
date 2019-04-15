@@ -68,7 +68,7 @@ extern "C" {
 
 
 
-  cv::Mat image;
+cv::Mat image;
 
 void MessageCallback(const std::shared_ptr<apollo::drivers::CompressedImage>& compressed_image) {
 
@@ -90,52 +90,60 @@ bool aprilTags::Init() {
       listener_node->CreateReader<apollo::drivers::CompressedImage>(
           "/apollo/sensor/camera/front_6mm/image/compressed", MessageCallback);
 	
-auto talker_node_apriltags = apollo::cyber::CreateNode("apriltags_node");
+  auto talker_node_apriltags = apollo::cyber::CreateNode("apriltags_node");
   // create talker
   auto talker_apriltags = talker_node_apriltags->CreateWriter<apriltags>("channel/apriltags");
 
 
-    apriltag_detector_t *td = apriltag_detector_create();
-    apriltag_family_t *tf = tag36h11_create();
-    apriltag_detector_add_family(td, tf);
+  apriltag_detector_t *td = apriltag_detector_create();
+  apriltag_family_t *tf = tag36h11_create();
+  apriltag_detector_add_family(td, tf);
 
-    td->quad_decimate = 2.0;
-    td->quad_sigma = 0.0;
-    td->refine_edges = 1;
-    td->decode_sharpening = 0.25;
+  td->quad_decimate = 2.0;
+  td->quad_sigma = 0.0;
+  td->refine_edges = 1;
+  td->decode_sharpening = 0.25;
 
-    cv::Mat frame, gray;
+  cv::Mat frame, gray;
   double dist;
-  int tagId;
-
+  int tagId,detec;
+  double x_offset, z_offset, x_offset_old ,z_offset_old, x_offset_skit, z_offset_skit,phi,phi_old;
+  double alpha = 0.1;
+  bool first = true;
+  
   while (apollo::cyber::OK()) {
-dist = 0;
-tagId = 0;
-  if(image.data)                              // Check for invalid input
-  {
-        frame = image;
-        cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
+    dist = 0;
+    tagId = 0;
+    detec = 0;
 
-        // Make an image_u8_t header for the Mat data
-        image_u8_t im = { .width = gray.cols,
-            .height = gray.rows,
-            .stride = gray.cols,
-            .buf = gray.data
-        };
 
-        zarray_t *detections = apriltag_detector_detect(td, &im);
-       // AERROR << zarray_size(detections) << " tags detected";
+  if(image.data) {
+      frame = image;
+      cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
+
+      image_u8_t im = { .width = gray.cols,
+        .height = gray.rows,
+        .stride = gray.cols,
+        .buf = gray.data
+      };
+
+      zarray_t *detections = apriltag_detector_detect(td, &im);
 
         // Draw detection outlines
-        for (int i = 0; i < zarray_size(detections); i++) {
-            apriltag_detection_t *det;
-            zarray_get(detections, i, &det);
+      for (int i = 0; i < zarray_size(detections); i++) {
 
+     
+          detec = 1;
+          
+          apriltag_detection_t *det;
+          zarray_get(detections, i, &det);
+
+			    tagId = det->id; 
           // First create an apriltag_detection_info_t struct using your known parameters.
           
           apriltag_detection_info_t info;
           info.det = det;
-          info.tagsize = 0.088; //88 mm
+          info.tagsize = 0.088; //size april tag (88 mm liten, 185 mm stor)
           info.fx = 1394.33;//1983.97376;
           info.fy = 1394.95;//1981.62916;
           info.cx = 964.117;//998.341216;
@@ -145,57 +153,52 @@ tagId = 0;
           apriltag_pose_t pose;
           double err = estimate_tag_pose(&info, &pose);
 
-          // Do something with pose.
 
-       
-       // AERROR<<"Family och ID: "<<det->family<< "   " << det->id;
-       // AERROR<<"T sakerna: "<< pose.t->data[0]<<"  "<<pose.t->data[1]<<" "<<pose.t->data[2];
-        //dist_3D = sqrt(((pose.t->data[0])*(pose.t->data[0])) + 
-                              //((pose.t->data[1])*(pose.t->data[1])) + 
-                              //((pose.t->data[2])*(pose.t->data[2])));
 
-        double dist_2D = sqrt(((pose.t->data[0])*(pose.t->data[0])) +   
-                              ((pose.t->data[2])*(pose.t->data[2])) ); // 2-dim kordinatsystem x-z-planet engligt apriltags system
-        //AERROR<<"T distans: " <<dist_2D;
-        //AERROR<<"X: " <<pose.t->data[0];
-       // AERROR<<"Y: " <<pose.t->data[1];
-        //AERROR<<"Z: " <<pose.t->data[2];
-       // AERROR<<"yaw? " << pose.R->data[(2*pose.ncols) + 0];
-       // AERROR<<"yaw? " << pose.R->data[3*3+1];
-       // AERROR<<"yaw? " << pose.R->data[3*3+1];
-       double x = pose.t->data[0];
-       double z = pose.t->data[2];
-        double phi = atan2(-pose.R->data[6],sqrt(pose.R->data[7]*pose.R->data[7]+pose.R->data[8]*pose.R->data[8]));
-        //AERROR<< " Grader mot kamera -> " << phi * 180 / 3.1415926535897932384626433832795028841971693993 << 
-              //" Längd från tag" << dist_2D << " X -> " << pose.t->data[0] << " Z -> " << pose.t->data[2];
-        double x_offset = cos(phi)*x-sin(phi)*z;
-        double z_offset = sin(phi)*x+cos(phi)*z;
+          //double dist_2D = sqrt(((pose.t->data[0])*(pose.t->data[0])) +   
+          //                      ((pose.t->data[2])*(pose.t->data[2])) ); // 2-dim kordinatsystem x-z-planet engligt apriltags system
+ 
+          double x = pose.t->data[0];
+          double z = pose.t->data[2];
+          phi = atan2(-pose.R->data[6],sqrt(pose.R->data[7]*pose.R->data[7]+pose.R->data[8]*pose.R->data[8]));
 
-        AERROR<<"   z_1: " << z_offset <<" x_1: " << x_offset;
+          x_offset = cos(phi)*x-sin(phi)*z;
+          z_offset = sin(phi)*x+cos(phi)*z;
+        
 
-			tagId = det->id; 
+        //complementary filter
+          if (first) {
+            first = false;
+            phi_old = phi;
+            x_offset_old = x_offset;
+            z_offset_old = z_offset;
+          } else {
+            phi = alpha * phi + (1- alpha) * phi_old;
+            phi_old = phi;
+
+            x_offset = x_offset *alpha + (1-alpha)*x_offset_old;
+            x_offset_old  = x_offset;
       
-      // index = row*ncols + col.
+            z_offset = z_offset *alpha + (1-alpha) * z_offset_old;
+            z_offset_old  = z_offset;
+          }
 
-       // AERROR<<"R sakerna: "<<pose.R->nrows<<" "<<pose.R->ncols;
+      }
+      zarray_destroy(detections);
 
-        }
-        zarray_destroy(detections);
-
-  }
-    static uint64_t seq = 0;
+    }
     auto msg = std::make_shared<apriltags>();
   
+    msg->set_timestamp(Time::Now().ToNanosecond());
+    msg->set_detec(detec);
     msg->set_tag_id(tagId);
     msg->set_x_offset(x_offset);
     msg->set_z_offset(z_offset);
-    
+    msg->set_angle_offset(phi);
+    talker_apriltags->Write(msg);
   }
-
-
   apriltag_detector_destroy(td);
   tag36h11_destroy(tf);
-
 
   return true;
 }
