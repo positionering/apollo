@@ -27,4 +27,5 @@ message apriltags {
     optional double x_offset = 4;
     optional double z_offset = 5;
     optional double angle_offset = 6;
+    repeated double rots = 7;
 };

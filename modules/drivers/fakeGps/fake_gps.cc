@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <sstream>
 #include <fstream>
+#include <ios>
 
 
 #include "cyber/component/component.h"
@@ -54,8 +55,22 @@ std::shared_ptr<apollo::cyber::Writer<apollo::localization::CorrectedImu>>
       corrimu_writer_ = talker_node->CreateWriter<CorrectedImu>(FLAGS_imu_topic);;
 
 std::vector< std::vector<double> > tags;
+/*
+  rotationX = {{1,0,0},
+               {0, cos(angle[1]), -sin(angle[1])},
+               {0, sin(angle[1]), cos(angle[1])}};
+                  
+  rotationY = {{cos(angle[0]),0,sin(angle[0])},
+               {0,1,0},
+               {-sin(angle[0]),0,cos(angle[0])}};
+                
+  rotationZ = {{cos(angle[2]), -sin(angle[2]),0},
+               {sin(angle[2]), cos(angle[2]), 0},
+               {0,0,1}};
+*/
 
-double x, y, c_x, c_y, c_xOffset, c_yOffset, a_xOffset, a_zOffset, cameraAngle;
+
+double x, y, c_xOffset, c_yOffset, a_xOffset, a_zOffset;
 
 double angleOffset = 0;
 double currHead = 0;
@@ -70,20 +85,19 @@ inline T *As(::google::protobuf::Message *message_ptr) {
 }
 
 
-
 void theHeading(){
-  
-  if(detec) {
+  /*if(detec) {
     currHead = angleOffset + tags[tagId][2]*DEG_TO_RAD_LOCAL;
-    cameraAngleOffset = currHead - cameraAngle;
+    cameraAngleOffset = currHead - cameraangle[1];
   }
   else {
-    currHead = cameraAngleOffset+cameraAngle;
-  }
+    currHead = cameraAngleOffset+cameraangle[1];
+  }*/
 }
 
-void updatePos(){
 
+void updatePos(){
+/*
   if(detec){
     x = tags[tagId][0] + a_xOffset;
     y = tags[tagId][1] + a_zOffset;
@@ -92,14 +106,17 @@ void updatePos(){
   } else {
     
     // clockwise
-    x = x + (c_x - c_xOffset)*cos(cameraAngleOffset) + (c_y - c_yOffset)*sin(cameraAngleOffset);
-    y = y + (-c_x - c_xOffset)*sin(cameraAngleOffset) + (c_y - c_yOffset)*cos(cameraAngleOffset);
+    
+    if(cameraAngleOffset > 0){
+      x = x + (c_x - c_xOffset)*cos(cameraAngleOffset) + (c_y - c_yOffset)*sin(cameraAngleOffset);
+      y = y + (-c_x - c_xOffset)*sin(cameraAngleOffset) + (c_y - c_yOffset)*cos(cameraAngleOffset);
+    } else {
+      // counterclockwise beroende på ifall vinkeln är negativ? osäker:
+      x = x + (c_x - c_xOffset)*cos(cameraAngleOffset) + (c_y - c_yOffset)*sin(cameraAngleOffset);
+      y = y + (-c_x - c_xOffset)*sin(cameraAngleOffset) + (c_y - c_yOffset)*cos(cameraAngleOffset);
+    }    
 
-    // counterclockwise beroende på ifall vinkeln är negativ? osäker:
-    //x = x + (c_x - c_xOffset)*cos(cameraAngleOffset) + (c_y - c_yOffset)*sin(cameraAngleOffset);
-    //y = y + (-c_x - c_xOffset)*sin(cameraAngleOffset) + (c_y - c_yOffset)*cos(cameraAngleOffset);
-
-  }
+  }*/
 }
 
 
@@ -119,7 +136,6 @@ void PublishOdometry(/*const MessagePtr message*/) {
 
   //pj_transform(wgs84pj_source_, utm_target_, 1, 1, &x, &y, NULL);
 
-  updatePos();
   gps_msg->mutable_position()->set_x(x);
   gps_msg->mutable_position()->set_y(y);
   gps_msg->mutable_position()->set_z(0);
@@ -181,17 +197,76 @@ void aprilCallBack(
 
 }
 
+
+
+
+
+std::vector<std::vector<double>> multiplyMatrices(std::vector<std::vector<double>> firstMatrix, 
+                          std::vector<std::vector<double>> secondMatrix) {
+
+	int i, j, k;
+  
+  std::vector<std::vector<double>> resultMatrix;
+
+	// Initializing elements of matrix mult to 0.
+	for(i = 0; i < 3; ++i)
+	{
+    std::vector<double> temp;
+		for(j = 0; j < 3; ++j)
+		{
+			temp.push_back(0);
+		}
+    resultMatrix.push_back(temp);
+	}
+
+	// Multiplying matrix firstMatrix and secondMatrix and storing in array mult.
+	for(i = 0; i < 3; ++i)
+	{
+		for(j = 0; j < 3; ++j)
+		{
+			for(k=0; k<3; ++k)
+			{
+				resultMatrix[i][j] += firstMatrix[i][k] * secondMatrix[k][j];
+			}
+		}
+	}
+	
+	return resultMatrix;
+}
+
+
+
+
+std::vector<std::vector<double>> eulerToRotation(std::vector<double> angle){
+
+ std::vector<std::vector<double>> roll =  {{1,0,0},
+                                                {0, cos(angle[2]), -sin(angle[2])},
+                                                {0, sin(angle[2]), cos(angle[2])}};
+
+std::vector<std::vector<double>> pitch = {{cos(angle[1]),0,sin(angle[1])},
+                                              {0,1,0},
+                                              {-sin(angle[1]),0,cos(angle[1])}};
+
+std::vector<std::vector<double>> yaw = {{cos(angle[0]), -sin(angle[0]),0},
+                                              {sin(angle[0]), cos(angle[0]), 0},
+                                              {0,0,1}};
+
+
+  return multiplyMatrices(yaw , multiplyMatrices(pitch, roll));
+}
+
 bool fakeGps::Init() {
   
   AERROR << "Commontest component init";
 
   std::ifstream file("/apollo/modules/drivers/fakeGps/file.txt");
-  std::ifstream filec("/apollo/modules/drivers/fakeGps/file.txt");
 
-  int sz = 1+std::count(std::istreambuf_iterator<char>(filec), 
+  int sz = 1+std::count(std::istreambuf_iterator<char>(file), 
            std::istreambuf_iterator<char>(), '\n');
 
-  AERROR<<sz;
+  file.clear();
+  file.seekg(0, std::ios::beg);
+    
   if(file.is_open())
   {
       double dubletas;
@@ -210,7 +285,7 @@ bool fakeGps::Init() {
   
   // create talker
   auto talker = talker_node->CreateWriter<Chatter>("channel/chatter");
-  Rate rate(0.1);
+  //Rate rate(0.1);
 
 
   auto listener_node = apollo::cyber::CreateNode("listener");
@@ -222,25 +297,51 @@ bool fakeGps::Init() {
   int fd;
   std::string myfifo = "/tmp/myfifo";
   char buf[MAX_BUF];
+  std::vector<double> pos(3,0);
+  std::vector<double> angles(3,0); 
+  std::vector<std::vector<double>> rotationMatrix;
 
   while (apollo::cyber::OK()) {
     fd = open(myfifo.c_str(), O_RDONLY /* | O_NONBLOCK */);
     read(fd, buf, MAX_BUF);
     close(fd);
     std::string bufS (buf);
-    std::size_t sz1,sz2;  
-
+    std::size_t sz1,sz2,sz3,sz4,sz5;  
   
-    c_x = std::stod (bufS,&sz1);
-    c_y = std::stod (bufS.substr(sz1), &sz2);
-    cameraAngle = std::stod (bufS.substr(sz1 + sz2));
-     
+
+    pos[0] = std::stod (bufS,&sz1);
+    pos[1] = std::stod (bufS.substr(sz1), &sz2);
+    pos[2] = std::stod (bufS.substr(sz1+sz2), &sz3);
+
+    AERROR<<"¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨¨";
+    for(int i = 0; i<3; i++){
+        AERROR<<pos[i];
+    }
+
+
+// Pitch
+// Yaw
+// Roll
+
+    angles[2] = -std::stod (bufS.substr(sz1 + sz2 + sz3), &sz4);       // roll
+    angles[0] = M_PI-std::stod (bufS.substr(sz1 + sz2 + sz3 + sz4),&sz5);  // yaw
+    angles[1] = -M_PI_2+std::stod (bufS.substr(sz1 + sz2 + sz3 + sz4 + sz5)); // pitch
     
+    AERROR<<"-------------------------------";
+    for(int i = 0; i<3; i++){
+        AERROR<<angles[i];
+    }
+
+    rotationMatrix = eulerToRotation(angles);
+
+AERROR<<"************************************";
+    for(int i = 0; i<3; i++){
+        AERROR<<rotationMatrix[i][0] << " " <<rotationMatrix[i][1] << " " << rotationMatrix[i][2];
+    }
+
     theHeading();
     updatePos();
     
-    AERROR << " Heading -> " << currHead*RAD_TO_DEG << " X-led -> " << x << " Y-led -> " << y;
-
     PublishOdometry();
 	  PublishCorrimu();
 	  
@@ -252,6 +353,7 @@ bool fakeGps::Init() {
     msg->set_content(bufS);
     talker->Write(msg);
 
+    //AERROR << " Heading -> " << currHead*RAD_TO_DEG << " X-led -> " << x << " Y-led -> " << y;
   }
   return true;
 }

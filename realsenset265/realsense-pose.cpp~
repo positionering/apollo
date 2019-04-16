@@ -235,10 +235,15 @@ int main(int argc, char * argv[]) try
 	  	std::this_thread::sleep_for(std::chrono::milliseconds(250));	
 	    if(temp.size() > 8){
 		
-		
+		try{	
 	//	std::cout << temp << std::endl;
 		speed1 = std::stof (temp,&sz);
 		speed2 = std::stof (temp.substr(sz));
+		} catch(const std::exception& e){
+			std::cout <<"exception:("<< e.what() <<std::endl;
+			speed1 = 0;
+			speed2 = 0;
+		}
 		}
 		
         bool b1 = wheel_odom_snr.send_wheel_odometry(0, f.get_frame_number(), {speed1,0,0});
@@ -249,11 +254,13 @@ int main(int argc, char * argv[]) try
 //							(pose_data.translation.z)*(pose_data.translation.z));
 	
 	
-	//writePipe = (fToString(pose_data.translation.x) + " " + fToString(pose_data.translation.z) + " " + fToString(get_theta().y));
+	writePipe = (fToString(pose_data.translation.x) + " " + fToString(pose_data.translation.y) + " " 
+	             + fToString(pose_data.translation.z) + " " + fToString(get_theta().x) + " " + fToString(get_theta().y) + " " + fToString(get_theta().z) );
 	
-	writePipe = fToString(pose_data.translation.x) + " " + fToString(pose_data.translation.z);
+	//writePipe = fToString(pose_data.translation.x) + " " + fToString(pose_data.translation.z);
 	//cout << writePipe << 
-	write(fd, writePipe.c_str(), 2+sizeof(fToString(pose_data.translation.x))+sizeof(fToString(pose_data.translation.x))+sizeof(fToString(get_theta().y)));
+	
+	write(fd, writePipe.c_str(),writePipe.size());
 	close(fd);	   
 	
 	        

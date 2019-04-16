@@ -22,6 +22,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <iterator>
+#include <vector>
 
 #include "cyber/cyber.h"
 
@@ -82,7 +84,7 @@ void MessageCallback(const std::shared_ptr<apollo::drivers::CompressedImage>& co
 
 
 bool aprilTags::Init() {
-  AERROR << "Commontest component init";
+  //AERROR << "Commontest component init";
 
   auto listener_node = apollo::cyber::CreateNode("listener_cam");
   // create listener
@@ -97,17 +99,18 @@ bool aprilTags::Init() {
 
   apriltag_detector_t *td = apriltag_detector_create();
   apriltag_family_t *tf = tag36h11_create();
+  apriltag_pose_t pose;
   apriltag_detector_add_family(td, tf);
 
   td->quad_decimate = 2.0;
-  td->quad_sigma = 0.0;
+  td->quad_sigma = 0;
   td->refine_edges = 1;
   td->decode_sharpening = 0.25;
 
   cv::Mat frame, gray;
   double dist;
   int tagId,detec;
-  double x_offset, z_offset, x_offset_old ,z_offset_old, x_offset_skit, z_offset_skit,phi,phi_old;
+  double x_offset, z_offset, x_offset_old ,z_offset_old, x_offset_filt, z_offset_filt,phi,phi_old,phi_filt;
   double alpha = 0.1;
   bool first = true;
   
@@ -150,7 +153,6 @@ bool aprilTags::Init() {
           info.cy = 537.659;//621.618227;
 
           // Then call estimate_tag_pose.
-          apriltag_pose_t pose;
           double err = estimate_tag_pose(&info, &pose);
 
 
@@ -173,28 +175,36 @@ bool aprilTags::Init() {
             x_offset_old = x_offset;
             z_offset_old = z_offset;
           } else {
-            phi = alpha * phi + (1- alpha) * phi_old;
-            phi_old = phi;
+           
 
-            x_offset = x_offset *alpha + (1-alpha)*x_offset_old;
-            x_offset_old  = x_offset;
+            x_offset_filt = x_offset *alpha + (1-alpha)*x_offset_old;
+            x_offset_old  = x_offset_filt;
       
-            z_offset = z_offset *alpha + (1-alpha) * z_offset_old;
-            z_offset_old  = z_offset;
+            z_offset_filt = z_offset *alpha + (1-alpha) * z_offset_old;
+            z_offset_old  = z_offset_filt;
           }
-
+          AERROR << "Z: " << z_offset << " Z_filt: "<<z_offset_filt << " X: " << x_offset << " X_filt: " << x_offset_filt 
+          << " Phi " << phi <<" Time: "<<Time::Now().ToNanosecond();
       }
       zarray_destroy(detections);
 
     }
     auto msg = std::make_shared<apriltags>();
   
+
     msg->set_timestamp(Time::Now().ToNanosecond());
     msg->set_detec(detec);
     msg->set_tag_id(tagId);
     msg->set_x_offset(x_offset);
     msg->set_z_offset(z_offset);
     msg->set_angle_offset(phi);
+    
+    if(detec){
+    msg->mutable_rots()->Reserve(9);
+      for(int i = 0; i<9; i++){
+        msg->add_rots(pose.R->data[i]);
+      }
+    }
     talker_apriltags->Write(msg);
   }
   apriltag_detector_destroy(td);
@@ -205,7 +215,7 @@ bool aprilTags::Init() {
 
 bool aprilTags::Proc(const std::shared_ptr<Driver>& msg0,
                                  const std::shared_ptr<Driver>& msg1) {
-  AINFO << "Start common component Proc [" << msg0->msg_id() << "] ["
-        << msg1->msg_id() << "]";
+  //AINFO << "Start common component Proc [" << msg0->msg_id() << "] ["
+       // << msg1->msg_id() << "]";
   return true;
 }
