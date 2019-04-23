@@ -313,7 +313,7 @@ bool fakeGps::Init() {
   char buf[MAX_BUF];
 
   // aprilToD435
-  Cord t, T265, D435ToTwizy, globalToApril, T265ToTwizy;// aprilToD435(definerad globalt)
+  Cord t, T265, globalToT265s, D435ToTwizy, globalToApril, T265ToTwizy;// aprilToD435(definerad globalt)
 
   while (apollo::cyber::OK()) {
     fd = open(myfifo.c_str(), O_RDONLY /* | O_NONBLOCK */);
@@ -344,15 +344,22 @@ bool fakeGps::Init() {
     globalToApril.trans <<  tags[tagId][0], tags[tagId][1], tags[tagId][2];
     globalToApril.angles << 0, 0, tags[tagId][3] * (M_PI / 180); //vinkel konverterad till radianer
     rotFromAngles(globalToApril);
+    
+    ekv6(globalToT265s, globalToApril, aprilToD435, T265);
+    logMatrix("Ekvation 6 ",globalToT265s);
 
-
+    ekv8(globalToT265s, globalToApril, aprilToD435, T265);
+    logVector("Ekvation 6 ",globalToT265s.trans);
+    
     //logMatrix("t265 matrix", T265);
     //logVector("t265 vinkel",T265.angles);
     //logVector("t265 trans",T265.trans);
 
 
-    logVector("apriltag trans",globalToApril.rot.transpose()*aprilToD435.rot.transpose()*aprilToD435.trans+globalToApril.trans);
+    logVector("D435 trans",globalToApril.rot.transpose()*aprilToD435.rot.transpose()*aprilToD435.trans+globalToApril.trans);
     //logVector("apriltag vinkel vec ",rotMatrixToOrientation(rotationMatrixAprilToD435));
+
+    logVector("T265 trans",globalToT265s.rot.transpose()*T265.trans+globalToT265s.trans);
 
 
     //logMatrix("apriltag matrix",aprilToD435);

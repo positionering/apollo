@@ -135,7 +135,7 @@ bool aprilTags::Init() {
 
         apriltag_detection_info_t info;
         info.det = det;
-        info.tagsize = 0.1615;  // size april tag (88 mm liten, 185 mm stor)
+        info.tagsize = 0.088;  // size april tag (88 mm liten, 185 mm stor) (0.1615 stor?)
         info.fx = 1394.33;     // 1983.97376;
         info.fy = 1394.95;     // 1981.62916;
         info.cx = 964.117;     // 998.341216;
