@@ -257,8 +257,12 @@ int main(int argc, char * argv[]) try
 //y Yaw
 //z Roll
 	
+   // double avrg = ((speed1+speed2)/2.0);
+
     writePipe = (fToString(pose_data.translation.x) + " " + fToString(pose_data.translation.y) + " " 
-	             + fToString(pose_data.translation.z) + " " + fToString(get_theta().x) + " " + fToString(get_theta().y) + " " + fToString(get_theta().z) );
+	             + fToString(pose_data.translation.z) + " " + fToString(get_theta().x) + " " + 
+                 fToString(get_theta().y) + " " + fToString(get_theta().z) + " " + 
+                 fToString((speed1+speed2)/2.0) + " " + fToString(accel_data.x) + " " + fToString(accel_data.z));
 	
 	//writePipe = fToString(pose_data.translation.x) + " " + fToString(pose_data.translation.z);
 	//cout << writePipe << 

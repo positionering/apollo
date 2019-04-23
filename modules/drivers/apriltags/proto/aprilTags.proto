@@ -24,8 +24,9 @@ message apriltags {
     optional uint64 timestamp = 1;
     optional int64 detec = 2; 
     optional int64 tag_id = 3;
-    optional double x_offset = 4;
-    optional double z_offset = 5;
-    optional double angle_offset = 6;
-    repeated double rots = 7;
+    optional double x = 4;
+    optional double y = 6;
+    optional double z = 5;
+    optional double angle_offset = 7;
+    repeated double rots = 8;
 };
