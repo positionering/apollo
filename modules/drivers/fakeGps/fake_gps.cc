@@ -345,12 +345,22 @@ bool fakeGps::Init() {
     globalToApril.angles << 0, 0, tags[tagId][3] * (M_PI / 180); //vinkel konverterad till radianer
     rotFromAngles(globalToApril);
     
-    ekv6(globalToT265s, globalToApril, aprilToD435, T265);
-    logMatrix("Ekvation 6 ",globalToT265s);
 
-    ekv8(globalToT265s, globalToApril, aprilToD435, T265);
-    logVector("Ekvation 6 ",globalToT265s.trans);
-    
+    // DESSA FÅR ÄNDAST KÖRAS NÄR DET FINNS EN NY APRILTAG
+    // UPPDATERAS DET MED DET KVARLIGANDE VÄRDET AV aprilToD435
+    // GÖR DET ATT DET ALLTID UPPDATERAS FÖR ATT "HÅLL KVAR" T265 KAMERAN 
+    // PÅ SENAST KÄNDA POSITION
+
+    // UTRÄKNINGEN ÄR FELAKTIG. SKA FELSÖKAS IMORGON
+    if(detec){
+      ekv6(globalToT265s, globalToApril, aprilToD435, T265);
+      logMatrix("Ekvation 6 ",globalToT265s);
+
+      ekv8(globalToT265s, globalToApril, aprilToD435, T265);
+      logVector("Ekvation 6 ",globalToT265s.trans);
+    }
+
+
     //logMatrix("t265 matrix", T265);
     //logVector("t265 vinkel",T265.angles);
     //logVector("t265 trans",T265.trans);
