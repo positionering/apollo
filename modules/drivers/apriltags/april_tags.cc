@@ -144,7 +144,7 @@ bool aprilTags::Init() {
         // Then call estimate_tag_pose.
         double err = estimate_tag_pose(&info, &pose);
 
-        if (err < 5e-7) {
+        if (err < 5e0) {
           detec = 1;
           x = pose.t->data[0];
           y = pose.t->data[1];

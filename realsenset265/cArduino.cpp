@@ -217,7 +217,7 @@ string cArduino::read()
 
 	int res = ::read(fd,buf,255);
 	buf[res]=0;             /* set end of string, so we can printf */
-
+	flush();
 	string ret(buf);
 	return ret;
 }

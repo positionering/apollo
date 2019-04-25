@@ -101,6 +101,17 @@ struct Cord {
 
 Cord aprilToD435;
 
+/*-----------------------------------------------*/
+/* START OF SECTION FOR DEFFENISION OF VARIABLES */
+/*-----------------------------------------------*/
+
+Eigen::Matrix3d R_GA, R_AB, R_KB, R_KsK, R_GKs;
+Eigen::Vector3d t_BA, t_GA, t_KsK, t_KB, t_GKs;
+
+/*-----------------------------------------------*/
+/*  END OF SECTION FOR DEFFENISION OF VARIABLES  */
+/*-----------------------------------------------*/
+
 void rotFromAngles(Cord& c) {
   c.rot = Eigen::AngleAxisd(c.angles(2), Eigen::Vector3d::UnitZ()) *  // YAW
           Eigen::AngleAxisd(c.angles(0), Eigen::Vector3d::UnitX()) *  // PITCH
@@ -130,11 +141,11 @@ void logMatrix(std::string s, std::vector<std::vector<double>> l) {
   }
 }
 
-void logMatrix(std::string s, Cord l) {
+void logMatrix(std::string s, Eigen::Matrix3d l) {
   AERROR << "******************";
   AERROR<<s;
   for (int i = 0; i < 3; i++) {
-    AERROR << l.rot(i,0) << " " << l.rot(i,1) << " " << l.rot(i,2);
+    AERROR << l(i,0) << " " << l(i,1) << " " << l(i,2);
   }
 }
 
@@ -238,10 +249,12 @@ void aprilCallBack(
   if (detec) {
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 3; j++) {
-        aprilToD435.rot(i,j) = msg->rots(3 * i + j);
+        R_AB(i,j) = msg->rots(3 * i + j);
       }
     }
-    
+    //AERROR << R_AB.determinant();
+    //logMatrix("THIS IS SPARTA!!!",R_AB);
+
     //För att få rotationsmatrisen i rätt kordinatsystem
     Eigen::Matrix3d rot_fix1; 
     rot_fix1 << 1, 0, 0,
@@ -251,24 +264,27 @@ void aprilCallBack(
     //För att få tillbaka resultatet i rätt kordinatsystem 
     //(Borde vara samma som rot_fix1 men rotationsmatrisen byter tecken på y)
     Eigen::Matrix3d rot_fix2;
-    rot_fix2 << 1, 0, 0,
-               0, 0, 1,
-               0, 1, 0;           
+    rot_fix2 << -1, 0, 0,
+                 0, 0, -1,
+                 0, -1, 0;           
       
-    aprilToD435.rot = rot_fix1*aprilToD435.rot*rot_fix2.transpose();
+    //AERROR << "FÖSRTA: " << rot_fix1.determinant();
+    //AERROR << "ANDRA: " << rot_fix2.determinant();
 
+    R_AB = rot_fix1*R_AB*rot_fix2.transpose();
+    //AERROR << R_AB.determinant();
     
   }
 }
 
 
-void ekv6(Cord& G_KS, const Cord& G_A, const Cord& A_B, const Cord& KS_K) {
-	G_KS.rot = G_A.rot * A_B.rot * KS_K.rot.transpose();
+void ekv6(Cord& G_KS, const Cord& G_A, const Cord& A_B, const Cord& KS_K, const Cord& K_B) {
+	G_KS.rot = G_A.rot * A_B.rot * K_B.rot.transpose() * KS_K.rot.transpose();
 	anglesFromRot(G_KS);
 }
 
-void ekv8(Cord& G_KS,const Cord& G_A,const Cord& A_B,const Cord& KS_K) {
-	G_KS.trans = G_A.trans + G_A.rot.transpose() * A_B.trans - G_KS.rot.transpose() * KS_K.trans;
+void ekv8(Cord& G_KS,const Cord& G_A,const Cord& A_B,const Cord& KS_K, const Cord& K_B) {
+	G_KS.trans = G_A.trans - G_A.rot.transpose() * A_B.rot.transpose() * (A_B.trans + K_B.rot * (K_B.trans + KS_K.rot * KS_K.trans));
 }
 
 
@@ -313,7 +329,7 @@ bool fakeGps::Init() {
   char buf[MAX_BUF];
 
   // aprilToD435
-  Cord t, T265, globalToT265s, D435ToTwizy, globalToApril, T265ToTwizy;// aprilToD435(definerad globalt)
+  Cord t, T265, globalToT265s, D435ToTwizy, globalToApril, T265ToTwizy, K_B;// aprilToD435(definerad globalt)
 
   while (apollo::cyber::OK()) {
     fd = open(myfifo.c_str(), O_RDONLY /* | O_NONBLOCK */);
@@ -353,29 +369,50 @@ bool fakeGps::Init() {
 
     // UTRÄKNINGEN ÄR FELAKTIG. SKA FELSÖKAS IMORGON
     if(detec){
-      ekv6(globalToT265s, globalToApril, aprilToD435, T265);
-      logMatrix("Ekvation 6 ",globalToT265s);
+      K_B.rot << 1, 0, 0,
+                 0, 1, 0,
+                 0, 0, 1;
+      K_B.trans << 0, 0, 0; 
 
-      ekv8(globalToT265s, globalToApril, aprilToD435, T265);
-      logVector("Ekvation 6 ",globalToT265s.trans);
+      ekv6(globalToT265s, globalToApril, aprilToD435, T265, K_B);
+      
+      ekv8(globalToT265s, globalToApril, aprilToD435, T265, K_B);
+      //logVector("Ekvation 8 ",globalToT265s.trans);
     }
 
 
-    //logMatrix("t265 matrix", T265);
+    //logMatrix("t265 matrix", T265.rot);
     //logVector("t265 vinkel",T265.angles);
     //logVector("t265 trans",T265.trans);
 
 
-    logVector("D435 trans",globalToApril.rot.transpose()*aprilToD435.rot.transpose()*aprilToD435.trans+globalToApril.trans);
+    //logVector("D435 trans",globalToApril.rot.transpose()*R_AB.transpose()*(-aprilToD435.trans)+globalToApril.trans);
     //logVector("apriltag vinkel vec ",rotMatrixToOrientation(rotationMatrixAprilToD435));
 
-    logVector("T265 trans",globalToT265s.rot.transpose()*T265.trans+globalToT265s.trans);
+    //logVector("T265 trans",globalToT265s.rot.transpose()*T265.trans+globalToT265s.trans);
 
+    //logMatrix("apriltag matrix",R_AB);
+    //logMatrix("apriltag matrix vec",rotationMatrixR_AB);
 
-    //logMatrix("apriltag matrix",aprilToD435);
-    //logMatrix("apriltag matrix vec",rotationMatrixAprilToD435);
+    //logMatrix("apriltag matrix ",globalToApril.rot);
 
-    //logMatrix("apriltag matrix ",globalToApril);
+    //logMatrix("R_AB",R_AB);
+    //logVector("t",aprilToD435.trans);
+    //logVector("--->> u ",R_AB.transpose()*(-aprilToD435.trans));
+    //logMatrix("R_KsK",T265.rot);
+    //logMatrix("R_GKs",globalToT265s.rot);
+
+    //logMatrix("R_GA ",globalToApril.rot);
+    //logMatrix("R_AB ",R_AB);
+    //logMatrix("R_KsK ",T265.rot);    
+    //logMatrix("R_GKs ",globalToT265s.rot);
+
+    //logVector("t_AB", globalToApril.rot.transpose() * R_AB.transpose() * (-aprilToD435.trans));
+    //logVector("t_GKs",globalToT265s.trans);
+
+    logVector("Bilen via april", globalToApril.trans + globalToApril.rot.transpose() * R_AB.transpose() * (-aprilToD435.trans));
+    logVector("Bilen via kamera", globalToT265s.trans + globalToT265s.rot.transpose() * (T265.trans + T265.rot * K_B.trans));
+
 
 
     PublishOdometry(t);
@@ -399,3 +436,53 @@ bool fakeGps::Proc(const std::shared_ptr<Driver> &msg0,
         << msg1->msg_id() << "]";
   return true;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* JOHANS "PSUDO" FÖR ATT GÖR BRA SAKER
+
+Läs in apriltagsen från filen
+Läs in från kamerafilen
+Definera rotationsmatriserna: R_GA, R_AB, R_KB, R_KsK & R_GKs
+Definera translationsvektorerna: t_BA, t_GA, t_KsK, t_KB & t_GKs
+
+uppdatera R_KB med värde från fil
+uppdatera t_KB med värde från fil
+
+medans fake_gps_OK
+
+  Vänta på detektion
+
+  Vid detektion
+    uppdatera R_GA med info från apriltagfilen tillsamans med avlästa idet
+    uppdatera R_AB med info från avlästa apriltagens 
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+*/

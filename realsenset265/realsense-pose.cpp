@@ -164,7 +164,7 @@ int main(int argc, char * argv[]) try
     
     //wheelSensor ws(sensPort);
     
-    cArduino arduino(ArduinoBaundRate::B9600bps);
+    cArduino arduino(ArduinoBaundRate::B9600bps);  
     
     rs2::pipeline pipe;
     rs2::config cfg;
@@ -230,13 +230,15 @@ int main(int argc, char * argv[]) try
         //std::cout<<" X -> "<<get_theta().x*180/PI <<" Y -> " << get_theta().y*180/PI << " Z -> " << get_theta().z*180/PI<<std::endl;
        // std::cout<<" X -> "<<pose_data.translation.x <<" Y -> " << pose_data.translation.y << " Z -> " << pose_data.translation.z<<std::endl;
         
-	    temp = arduino.read();
-//	    std::cout << temp << std::endl;
-	  	std::this_thread::sleep_for(std::chrono::milliseconds(250));	
-	    if(temp.size() > 8){
+        std::this_thread::sleep_for(std::chrono::milliseconds(250));	// ta bort när vi avkomenterar hjulodometrin
+
+	    /*temp = arduino.read();     //<-----
+	   // std::cout << temp << std::endl;
+	  	std::this_thread::sleep_for(std::chrono::milliseconds(10));	
+	    if(temp.size() > 9){
 		
 		try{	
-	//	std::cout << temp << std::endl;
+		std::cout << temp << std::endl;
 		speed1 = std::stof (temp,&sz);
 		speed2 = std::stof (temp.substr(sz));
 		} catch(const std::exception& e){
@@ -247,7 +249,7 @@ int main(int argc, char * argv[]) try
 		}
 		
         bool b1 = wheel_odom_snr.send_wheel_odometry(0, f.get_frame_number(), {speed1,0,0});
-        bool b2 = wheel_odom_snr.send_wheel_odometry(1, f.get_frame_number(), {speed2,0,0});
+        bool b2 = wheel_odom_snr.send_wheel_odometry(1, f.get_frame_number(), {speed2,0,0}); */   //<-----
 
 //	double dist = sqrt((pose_data.translation.x)*(pose_data.translation.x) + 
 //							(pose_data.translation.y)*(pose_data.translation.y) + 
