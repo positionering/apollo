@@ -147,7 +147,7 @@ void logMatrix(std::string s, std::vector<std::vector<double>> l) {
 
 void logMatrix(std::string s, Eigen::Matrix3d l) {
   AERROR << "******************";
-  AERROR << s;
+  AERROR << s << std::fixed << std::setprecision(3);
   for (int i = 0; i < 3; i++) {
     AERROR << l(i, 0) << " " << l(i, 1) << " " << l(i, 2);
   }
@@ -160,7 +160,7 @@ void logVector(std::string s, std::vector<double> l) {
 
 void logVector(std::string s, Eigen::Vector3d l) {
   AERROR << "---------------------------";
-  AERROR << s << " " << l(0) << " " << l(1) << " " << l(2);
+  AERROR << std::fixed << std::setprecision(3) << s << " " << l(0) << " " << l(1) << " " << l(2);
 }
 
 void PublishOdometry(Cord p /*const MessagePtr message*/) {
@@ -237,61 +237,6 @@ void PublishCorrimu(Cord h /*const MessagePtr message*/) {
   corrimu_writer_->Write(imu);
 }
 
-/*-----------------------------------------------*/
-/*    START PÅ INLÄSNING AV DATA FRÅN APRILTAG   */
-/*-----------------------------------------------*/
-
-void aprilCallBack(
-    const std::shared_ptr<apollo::modules::drivers::apriltags::proto::apriltags>
-        &msg) {
-  detec = msg->detec();
-
-  if (tagId == 0 || detec) {
-    tagId = msg->tag_id();
-  }
-
-  // Vi byter bilens koordinatsystem
-  t_BA << msg->x(), msg->z(), -msg->y();  // x till x, z till y, -y till z
-  // logVector("t_BA", t_BA);
-
-  if (detec) {
-    for (int i = 0; i < 3; i++) {
-      for (int j = 0; j < 3; j++) {
-        R_AB(i, j) = msg->rots(3 * i + j);
-      }
-    }
-
-    // För att få rotationsmatrisen i rätt kordinatsystem
-    Eigen::Matrix3d rot_fix1;
-    rot_fix1 << 1, 0, 0, 0, 0, 1, 0, -1, 0;
-    Eigen::Matrix3d rot_fix2;
-    rot_fix2 << -1, 0, 0, 0, 0, -1, 0, -1, 0;
-
-    R_AB = rot_fix1 * R_AB * rot_fix2.transpose();
-    // logMatrix("R_AB",R_AB);
-  }
-}
-/*-----------------------------------------------*/
-/*    SLUT PÅ INLÄSNING AV DATA FRÅN APRILTAG    */
-/*-----------------------------------------------*/
-
-Eigen::Matrix3d ekv6(Eigen::Matrix3d R_GA, Eigen::Matrix3d R_AB,
-                     Eigen::Matrix3d R_KB, Eigen::Matrix3d R_KsK) {
-  Eigen::Matrix3d rot;
-  rot = R_GA * R_AB * R_KB.transpose() * R_KsK.transpose();
-  return rot;
-}
-
-Eigen::Vector3d ekv8(Eigen::Vector3d t_GA, Eigen::Vector3d t_BA,
-                     Eigen::Vector3d t_KB, Eigen::Vector3d t_KsK,
-                     Eigen::Matrix3d R_GA, Eigen::Matrix3d R_AB,
-                     Eigen::Matrix3d R_KB, Eigen::Matrix3d R_KsK) {
-  Eigen::Vector3d trans;
-  trans = t_GA - R_GA.transpose() * R_AB.transpose() *
-                     (t_BA + R_KB * (t_KB + R_KsK * t_KsK));
-  return trans;
-}
-
 void initFile() {
   std::ifstream file("/apollo/modules/drivers/fakeGps/file.txt");
 
@@ -313,6 +258,60 @@ void initFile() {
     }
   }
 }
+
+/*-----------------------------------------------*/
+/*    START PÅ INLÄSNING AV DATA FRÅN APRILTAG   */
+/*-----------------------------------------------*/
+
+void aprilCallBack(
+    const std::shared_ptr<apollo::modules::drivers::apriltags::proto::apriltags>
+        &msg) {
+  detec = msg->detec();
+
+  if (tagId == 0 || detec) {
+    tagId = msg->tag_id();
+  }
+
+  if (detec) {
+
+    // Vi byter bilens koordinatsystem
+    t_BA << msg->x(), msg->z(), -msg->y();  // x till x, z till y, -y till z
+    //logVector("t_BA", t_BA);
+  
+    for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 3; j++) {
+        R_AB(i, j) = msg->rots(3 * i + j);
+      }
+    }
+
+    // För att få rotationsmatrisen i rätt kordinatsystem
+    Eigen::Matrix3d rot_fix1;
+    rot_fix1 << 1, 0, 0, 0, 0, 1, 0, -1, 0;
+    Eigen::Matrix3d rot_fix2;
+    rot_fix2 << -1, 0, 0, 0, 0, -1, 0, -1, 0;
+
+    R_AB = rot_fix1 * R_AB * rot_fix2.transpose();
+    //logMatrix("R_AB",R_AB);
+  }
+}
+/*-----------------------------------------------*/
+/*    SLUT PÅ INLÄSNING AV DATA FRÅN APRILTAG    */
+/*-----------------------------------------------*/
+
+Eigen::Matrix3d ekv6(Eigen::Matrix3d R_GA, Eigen::Matrix3d R_AB, Eigen::Matrix3d R_KB, Eigen::Matrix3d R_KsK) {
+  Eigen::Matrix3d rot;
+  rot = R_GA * R_AB * R_KB.transpose() * R_KsK.transpose();
+  return rot;
+}
+
+Eigen::Vector3d ekv8(Eigen::Vector3d t_GA, Eigen::Vector3d t_BA, Eigen::Vector3d t_KB, Eigen::Vector3d t_KsK,
+                     Eigen::Matrix3d R_GA, Eigen::Matrix3d R_AB, Eigen::Matrix3d R_KB, Eigen::Matrix3d R_KsK) {
+  Eigen::Vector3d trans;
+  // Transponat på R_KsK?
+  trans = t_GA - R_GA.transpose() * R_AB.transpose() * (t_BA + R_KB * (t_KB + R_KsK.transpose() * t_KsK));
+  return trans;
+}
+
 
 bool fakeGps::Init() {
   AERROR << "Commontest component init";
@@ -339,8 +338,11 @@ bool fakeGps::Init() {
   /*---------------------------------------------------*/
 
   // Placeholder tills detta läses in från fil
-  R_KB << 1, 0, 0, 0, 1, 0, 0, 0, 1;
   t_KB << 0, 0, 0;
+  //logVector("t_KB",t_KB);
+  
+  R_KB << 1, 0, 0, 0, 1, 0, 0, 0, 1;
+  //logMatrix("R_KB",R_KB);
 
   /*---------------------------------------------------*/
   /*    SLUT PÅ INLÄSNING AV DATA FRÅN KAMERAFILEN    */
@@ -361,20 +363,19 @@ bool fakeGps::Init() {
     t_KsK(2) = std::stod(bufS.substr(sz1), &sz2);
     t_KsK(1) = -std::stod(bufS.substr(sz1 + sz2), &sz3);
 
-    // logVector("t_KsK", t_KsK);
+    //logVector("t_KsK", t_KsK);
 
     double roll = -std::stod(bufS.substr(sz1 + sz2 + sz3), &sz4);  // pitch
-    double yaw =
-        M_PI - std::stod(bufS.substr(sz1 + sz2 + sz3 + sz4), &sz5);  // yaw
-    double pitch = M_PI_2 - std::stod(bufS.substr(sz1 + sz2 + sz3 + sz4 + sz5),
-                                      &sz6);  // roll
+    double yaw = M_PI - std::stod(bufS.substr(sz1 + sz2 + sz3 + sz4), &sz5);  // yaw
+    double pitch = M_PI_2 - std::stod(bufS.substr(sz1 + sz2 + sz3 + sz4 + sz5), &sz6);  // roll
 
+    // Ska det vara transponat på denna kanske?
     R_KsK = rotFromAngles(yaw, pitch, roll);
 
     // AERROR << "YAW: " << yaw;
     // AERROR << "PITCH: " << pitch;
     // AERROR << "ROLL: " << roll;
-    // logMatrix("R_KsK", R_KsK);
+    //logMatrix("R_KsK", R_KsK);
 
     /*--------------------------------------------------*/
     /*    SLUT PÅ INLÄSNING AV DATA FRÅN T265 KAMERAN   */
@@ -395,9 +396,11 @@ bool fakeGps::Init() {
 
     if (detec) {
       t_GA << tags[tagId][0], tags[tagId][1], tags[tagId][2];
-      double theta_april =
-          tags[tagId][3] * (M_PI / 180);  // vinkel konverterad till radianer
+      //logVector("t_GA", t_GA);
+
+      double theta_april = tags[tagId][3] * (M_PI / 180);  // vinkel konverterad till radianer
       R_GA = rotFromAngles(theta_april, 0, 0);
+      //logMatrix("R_GA", R_GA);
     }
 
     /*----------------------------------------------------*/
@@ -410,18 +413,55 @@ bool fakeGps::Init() {
 
     if (detec) {
       R_GKs = ekv6(R_GA, R_AB, R_KB, R_KsK);
+      //logMatrix("R_GKs", R_GKs);
 
-      t_GKs = ekv8(t_GA, t_BA, t_KB, t_KsK, R_GA, R_AB, R_KB, R_KsK);
+      t_GKs = ekv8(t_GA, t_BA, t_KB, t_KsK,
+                   R_GA, R_AB, R_KB, R_KsK);
+      //logVector("t_GKs", t_GKs);
     }
 
     /*---------------------------------------------*/
     /*    SLUT PÅ BERÄKNING AV R_GKs OCH t_GKs     */
     /*---------------------------------------------*/
 
-    logVector("Bilen via april",
-              t_GA + R_GA.transpose() * R_AB.transpose() * (-t_BA));
-    logVector("Bilen via kamera",
-              t_GKs + R_GKs.transpose() * (t_KsK + R_KsK * t_KB));
+
+    //logVector("t_GKs fake",  -R_AB.transpose() * (t_BA + R_KsK * t_KsK));
+    //logMatrix("R_KsK", R_KsK);
+    //logVector("t_KKs (K)",  R_KsK.transpose() * -t_KsK);
+    //logVector("t_KsK",  t_KsK);
+    //logVector("0", t_KsK - R_KsK * (R_KsK.transpose() * t_KsK));
+    //logVector("t_GKs",  t_GKs);
+
+    //logVector("Bilen via april", t_GA - R_GA.transpose() * R_AB.transpose() * t_BA);
+
+    // Transponat på R_KsK
+    //logVector("Bilen via kamera",t_GKs + R_GKs.transpose() * (t_KsK + R_KsK.transpose() * t_KB));
+
+    logVector("t_KsK (G)",R_GKs * t_KsK);
+    logVector("t_KsK (G)",R_GKs.transpose() * t_KsK);
+    logVector("t_KsK (Ks)",t_KsK);
+
+
+    /* KOMENTARER FRÅN JOHAN 25/4 19:30
+    Just nu tycks apriltagen fungera som den ska. Den är fortfarande inte utförligt testad men det tycks som att det fungerar.
+    Bilens position via apriltagen blir rätt.
+    Jag har kollat ekvation 6 och den verkar ge rätt sak.
+    Ekvation 8 där emot ser ut att fungera, nästan. Jag efter att ha undersökt saken verkar -R_KsK * t_KsK vara det som är problemet.
+    Om man istället räknar med -R_KsK.transpose() * t_KsK verkar den räkna rätt och då verkar även ekvation 8 fungera som den ska.
+    Då kvarsåt att hitta bilen via T265 kameran. Jag kom fram till att t_GKs + R_GKs.transpose() * (t_KsK + R_KsK * t_KB) borde vara
+    ekvationen som gäller, detta är kasnke inte sant dock. Jag har inte räknat på det 100% ordentligt. Det fungerar ganska bra men
+    inte tillräckligt. För vissa rotationer på t265an gör det inte riktigt som det ska. Mer än bara numerisk instabilitet (och felet
+    t265 kameran borde inte spela roll då detta är till för att kalibrera just det felet). Då det behövdes ett R_KsK.transpose() i ekv8
+    ska det kasnke vara ett med här (vet inte varför dock och test säger att det inte hjälper). 
+    
+    TILLLÄG 19:50
+    t_KsK (G) = R_GKs.transpose() * t_KsK tycks vara problemet. Den gör rätt tills dess att t265an roterar. Då bli den fel. (Både med och
+    utan transponat)
+    
+    TILLÄG 20:05
+    Föregående komentar tog inte hänsyn till hur KsK eventuelt flyttat sig. Detta skulle göra att saker inte beter sig som man förväntar sig.
+    */
+    
 
     PublishOdometry(t);
     PublishCorrimu(t);
