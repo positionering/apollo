@@ -112,10 +112,17 @@ Eigen::Vector3d t_BA, t_GA, t_KsK, t_KB, t_GKs;
 /*  END OF SECTION FOR DEFFENISION OF VARIABLES  */
 /*-----------------------------------------------*/
 
+Eigen::Matrix3d rotFromAngles(double yaw, double pitch, double roll) {
+  Eigen::Matrix3d rot;
+  rot = Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()) *  // YAW
+        Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitX()) *  // PITCH
+        Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitY());   // ROLL
+  return rot;
+}
+
 void rotFromAngles(Cord& c) {
-  c.rot = Eigen::AngleAxisd(c.angles(2), Eigen::Vector3d::UnitZ()) *  // YAW
-          Eigen::AngleAxisd(c.angles(0), Eigen::Vector3d::UnitX()) *  // PITCH
-          Eigen::AngleAxisd(c.angles(1), Eigen::Vector3d::UnitY());   // ROLL
+  /* ------------ DUBBELKOLLA ROTATIONERNA HÄR!! ÄR YAW, PITCH & ROLL RÄTT? ----------*/
+  c.rot = rotFromAngles( c.angles(2), c.angles(0), c.angles(1) ); 
 }
 
 void anglesFromRot(Cord& c) {
@@ -244,7 +251,7 @@ void aprilCallBack(
   }
 
   //Vi byter bilens koordinatsystem 
-  aprilToD435.trans << msg->x(), msg->z(), -msg->y();    // x till x, z till y, -y till z
+  t_BA << msg->x(), msg->z(), -msg->y();    // x till x, z till y, -y till z
 
   if (detec) {
     for (int i = 0; i < 3; i++) {
@@ -283,10 +290,22 @@ void ekv6(Cord& G_KS, const Cord& G_A, const Cord& A_B, const Cord& KS_K, const 
 	anglesFromRot(G_KS);
 }
 
+Eigen::Matrix3d ekv6( Eigen::Matrix3d R_GA, Eigen::Matrix3d R_AB, Eigen::Matrix3d R_KB, Eigen::Matrix3d R_KsK) {
+  Eigen::Matrix3d rot;
+	rot = R_GA * R_AB * R_KB.transpose() * R_KsK.transpose();
+  return rot;
+}
+
 void ekv8(Cord& G_KS,const Cord& G_A,const Cord& A_B,const Cord& KS_K, const Cord& K_B) {
 	G_KS.trans = G_A.trans - G_A.rot.transpose() * A_B.rot.transpose() * (A_B.trans + K_B.rot * (K_B.trans + KS_K.rot * KS_K.trans));
 }
 
+Eigen::Vector3d ekv8(Eigen::Vector3d t_GA, Eigen::Vector3d t_BA, Eigen::Vector3d t_KB, Eigen::Vector3d t_KsK,
+                     Eigen::Matrix3d R_GA, Eigen::Matrix3d R_AB, Eigen::Matrix3d R_KB, Eigen::Matrix3d R_KsK) {
+  Eigen::Vector3d trans;                     
+	trans = t_GA - R_GA.transpose() * R_AB.transpose() * (t_BA + R_KB * (t_KB + R_KsK * t_KsK));
+  return trans;
+}
 
 void initFile() {
   std::ifstream file("/apollo/modules/drivers/fakeGps/file.txt");
@@ -338,17 +357,20 @@ bool fakeGps::Init() {
     std::string bufS(buf);
     std::size_t sz1, sz2, sz3, sz4, sz5, sz6, sz7, sz8;
 
-    T265.trans(0) = std::stod(bufS, &sz1);
-    T265.trans(2) = std::stod(bufS.substr(sz1), &sz2);
-    T265.trans(1) = -std::stod(bufS.substr(sz1 + sz2), &sz3);
+    t_KsK(0) = std::stod(bufS, &sz1);
+    t_KsK(2) = std::stod(bufS.substr(sz1), &sz2);
+    t_KsK(1) = -std::stod(bufS.substr(sz1 + sz2), &sz3);
 
-    T265.angles(1) = -std::stod(bufS.substr(sz1 + sz2 + sz3), &sz4);  // pitch
-    T265.angles(2) =
+
+    /* ------------ DUBBELKOLLA ROTATIONERNA HÄR!! ÄR YAW, PITCH & ROLL RÄTT? ----------*/
+    double pitch = -std::stod(bufS.substr(sz1 + sz2 + sz3), &sz4);  // pitch
+    double yaw =
         M_PI - std::stod(bufS.substr(sz1 + sz2 + sz3 + sz4), &sz5);  // yaw
-    T265.angles(0) =
+    double roll =
         M_PI_2 - std::stod(bufS.substr(sz1 + sz2 + sz3 + sz4 + sz5), &sz6);  // roll
 
-    rotFromAngles(T265);
+    /* ------------ DUBBELKOLLA ROTATIONERNA HÄR!! ÄR YAW, PITCH & ROLL RÄTT? ----------*/
+    R_KsK = rotFromAngles(yaw, pitch, roll);
 
 
     // double speedz = std::stod(bufS.substr(sz1 + sz2 + sz3 + sz4 + sz5 + sz6), &sz7);
@@ -357,61 +379,26 @@ bool fakeGps::Init() {
 
 //    AERROR << speedz << " " << accX << " " << accZ;
 
-    globalToApril.trans <<  tags[tagId][0], tags[tagId][1], tags[tagId][2];
+    t_GA <<  tags[tagId][0], tags[tagId][1], tags[tagId][2];
     globalToApril.angles << 0, 0, tags[tagId][3] * (M_PI / 180); //vinkel konverterad till radianer
-    rotFromAngles(globalToApril);
+    R_GA = rotFromAngles(globalToApril.angles(2), globalToApril.angles(0), globalToApril.angles(1));
     
 
-    // DESSA FÅR ÄNDAST KÖRAS NÄR DET FINNS EN NY APRILTAG
-    // UPPDATERAS DET MED DET KVARLIGANDE VÄRDET AV aprilToD435
-    // GÖR DET ATT DET ALLTID UPPDATERAS FÖR ATT "HÅLL KVAR" T265 KAMERAN 
-    // PÅ SENAST KÄNDA POSITION
-
-    // UTRÄKNINGEN ÄR FELAKTIG. SKA FELSÖKAS IMORGON
     if(detec){
       K_B.rot << 1, 0, 0,
                  0, 1, 0,
                  0, 0, 1;
       K_B.trans << 0, 0, 0; 
 
-      ekv6(globalToT265s, globalToApril, aprilToD435, T265, K_B);
+       R_GKs = ekv6(R_GA, R_AB, K_B.rot, R_KsK);
       
-      ekv8(globalToT265s, globalToApril, aprilToD435, T265, K_B);
-      //logVector("Ekvation 8 ",globalToT265s.trans);
+      t_GKs = ekv8(t_GA, t_BA, t_KB, t_KsK,
+                   R_GA, R_AB, R_KB, R_KsK);
     }
 
 
-    //logMatrix("t265 matrix", T265.rot);
-    //logVector("t265 vinkel",T265.angles);
-    //logVector("t265 trans",T265.trans);
-
-
-    //logVector("D435 trans",globalToApril.rot.transpose()*R_AB.transpose()*(-aprilToD435.trans)+globalToApril.trans);
-    //logVector("apriltag vinkel vec ",rotMatrixToOrientation(rotationMatrixAprilToD435));
-
-    //logVector("T265 trans",globalToT265s.rot.transpose()*T265.trans+globalToT265s.trans);
-
-    //logMatrix("apriltag matrix",R_AB);
-    //logMatrix("apriltag matrix vec",rotationMatrixR_AB);
-
-    //logMatrix("apriltag matrix ",globalToApril.rot);
-
-    //logMatrix("R_AB",R_AB);
-    //logVector("t",aprilToD435.trans);
-    //logVector("--->> u ",R_AB.transpose()*(-aprilToD435.trans));
-    //logMatrix("R_KsK",T265.rot);
-    //logMatrix("R_GKs",globalToT265s.rot);
-
-    //logMatrix("R_GA ",globalToApril.rot);
-    //logMatrix("R_AB ",R_AB);
-    //logMatrix("R_KsK ",T265.rot);    
-    //logMatrix("R_GKs ",globalToT265s.rot);
-
-    //logVector("t_AB", globalToApril.rot.transpose() * R_AB.transpose() * (-aprilToD435.trans));
-    //logVector("t_GKs",globalToT265s.trans);
-
-    logVector("Bilen via april", globalToApril.trans + globalToApril.rot.transpose() * R_AB.transpose() * (-aprilToD435.trans));
-    logVector("Bilen via kamera", globalToT265s.trans + globalToT265s.rot.transpose() * (T265.trans + T265.rot * K_B.trans));
+    logVector("Bilen via april", t_GA + R_GA.transpose() * R_AB.transpose() * (-t_BA));
+    logVector("Bilen via kamera", t_GKs + R_GKs.transpose() * (t_KsK + T265.rot * K_B.trans));
 
 
 
