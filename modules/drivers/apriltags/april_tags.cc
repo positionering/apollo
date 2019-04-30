@@ -80,7 +80,6 @@ void MessageCallback(
 }
 
 bool aprilTags::Init() {
-  // AERROR << "Commontest component init";
 
   auto listener_node = apollo::cyber::CreateNode("listener_cam");
   // create listener
@@ -113,6 +112,7 @@ bool aprilTags::Init() {
     detec = 0;
 
     if (image.data) {
+     AERROR << "Commontest component init";
       frame = image;
       cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
 

@@ -281,9 +281,6 @@ function main(){
     info "Starting docker container \"${APOLLO_DEV}\" ..."
 
     DOCKER_CMD="nvidia-docker"
-    if ! [ -x "$(command -v ${DOCKER_CMD})" ]; then
-        DOCKER_CMD="docker"
-    fi
 
     ${DOCKER_CMD}  run -it \
         -d \

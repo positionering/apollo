@@ -105,6 +105,7 @@ Cord aprilToD435;
 /*-----------------------------------------------*/
 
 Eigen::Matrix3d R_GA, R_AB, R_KB, R_KsK, R_GKs;
+Eigen::Matrix3d Rg_GA,Rg_AB,Rg_KB,Rg_KsK, Rg_GKs;
 Eigen::Vector3d t_GA, t_BA, t_KB, t_KsK, t_GKs;
 
 /*-----------------------------------------------*/
@@ -147,9 +148,9 @@ void logMatrix(std::string s, std::vector<std::vector<double>> l) {
 
 void logMatrix(std::string s, Eigen::Matrix3d l) {
   AERROR << "******************";
-  AERROR << s << std::fixed << std::setprecision(3);
+  AERROR << s;
   for (int i = 0; i < 3; i++) {
-    AERROR << l(i, 0) << " " << l(i, 1) << " " << l(i, 2);
+    AERROR << std::fixed << std::setprecision(3) << l(i, 0) << " " << l(i, 1) << " " << l(i, 2);
   }
 }
 
@@ -259,6 +260,58 @@ void initFile() {
   }
 }
 
+
+/*--------------------------------------------------*/
+/*    START PÅ DEFENITION AV ROTATIONSFUNKTIONER    */
+/*--------------------------------------------------*/
+
+Eigen::Matrix3d R_AB_glob(Eigen::Matrix3d R_GA, Eigen::Matrix3d R_AB) {
+  Eigen::Matrix3d rot;
+  rot =  R_GA.transpose() * R_AB * R_GA;
+  return rot;
+}
+
+Eigen::Matrix3d R_KB_glob(Eigen::Matrix3d R_GA, Eigen::Matrix3d R_AB, Eigen::Matrix3d R_KB) {
+  Eigen::Matrix3d rot;
+  rot =  R_GA.transpose() * R_AB.transpose() * R_KB * R_AB * R_GA;
+  return rot;
+}
+
+Eigen::Matrix3d R_KsK_glob(Eigen::Matrix3d R_GA, Eigen::Matrix3d R_AB, Eigen::Matrix3d R_KB, Eigen::Matrix3d R_KsK) {
+  Eigen::Matrix3d rot;
+  rot = R_GA.transpose() * R_AB.transpose() * R_KB * R_KsK * R_KB.transpose() * R_AB * R_GA;
+  return rot;
+}
+
+Eigen::Matrix3d ekv6(Eigen::Matrix3d R_GA, Eigen::Matrix3d R_AB, Eigen::Matrix3d R_KB, Eigen::Matrix3d R_KsK) {
+  Eigen::Matrix3d rot,Rg_GA,Rg_AB,Rg_KB,Rg_KsK;
+  Rg_GA = R_GA;
+  Rg_AB = R_AB_glob(Rg_GA, R_AB);
+  Rg_KB = R_KB_glob(Rg_GA, Rg_AB, R_KB);
+  Rg_KsK = R_KsK_glob(Rg_GA, Rg_AB, Rg_KB, R_KsK);
+  rot =  Rg_KsK.transpose() * Rg_KB.transpose() * Rg_AB * Rg_GA;
+  return rot;
+}
+
+Eigen::Vector3d ekv8(Eigen::Vector3d t_GA, Eigen::Vector3d t_BA, Eigen::Vector3d t_KB, Eigen::Vector3d t_KsK,
+                     Eigen::Matrix3d R_GA, Eigen::Matrix3d R_AB, Eigen::Matrix3d R_KB, Eigen::Matrix3d R_KsK) {
+  Eigen::Vector3d trans;
+  Eigen::Matrix3d Rg_GA,Rg_AB,Rg_KB,Rg_KsK;
+  Rg_GA = R_GA;
+  Rg_AB = R_AB_glob(Rg_GA, R_AB);
+  Rg_KB = R_KB_glob(Rg_GA, Rg_AB, R_KB);
+  Rg_KsK = R_KsK_glob(Rg_GA, Rg_AB, Rg_KB, R_KsK);
+
+  trans = t_GA - R_GA * R_AB * (t_BA + R_KB.transpose() * (t_KB + R_KsK.transpose() * t_KsK));
+  return trans;
+}
+
+
+/*-------------------------------------------------*/
+/*    SLUT PÅ DEFENITION AV ROTATIONSFUNKTIONER    */
+/*-------------------------------------------------*/
+
+
 /*-----------------------------------------------*/
 /*    START PÅ INLÄSNING AV DATA FRÅN APRILTAG   */
 /*-----------------------------------------------*/
@@ -291,26 +344,14 @@ void aprilCallBack(
     rot_fix2 << -1, 0, 0, 0, 0, -1, 0, -1, 0;
 
     R_AB = rot_fix1 * R_AB * rot_fix2.transpose();
+    Rg_AB = R_AB_glob(Rg_GA, R_AB);
     //logMatrix("R_AB",R_AB);
   }
+
 }
 /*-----------------------------------------------*/
 /*    SLUT PÅ INLÄSNING AV DATA FRÅN APRILTAG    */
 /*-----------------------------------------------*/
-
-Eigen::Matrix3d ekv6(Eigen::Matrix3d R_GA, Eigen::Matrix3d R_AB, Eigen::Matrix3d R_KB, Eigen::Matrix3d R_KsK) {
-  Eigen::Matrix3d rot;
-  rot = R_GA * R_AB * R_KB.transpose() * R_KsK.transpose();
-  return rot;
-}
-
-Eigen::Vector3d ekv8(Eigen::Vector3d t_GA, Eigen::Vector3d t_BA, Eigen::Vector3d t_KB, Eigen::Vector3d t_KsK,
-                     Eigen::Matrix3d R_GA, Eigen::Matrix3d R_AB, Eigen::Matrix3d R_KB, Eigen::Matrix3d R_KsK) {
-  Eigen::Vector3d trans;
-  // Transponat på R_KsK?
-  trans = t_GA - R_GA.transpose() * R_AB.transpose() * (t_BA + R_KB * (t_KB + R_KsK.transpose() * t_KsK));
-  return trans;
-}
 
 
 bool fakeGps::Init() {
@@ -340,8 +381,9 @@ bool fakeGps::Init() {
   // Placeholder tills detta läses in från fil
   t_KB << 0, 0, 0;
   //logVector("t_KB",t_KB);
-  
+
   R_KB << 1, 0, 0, 0, 1, 0, 0, 0, 1;
+  Rg_KB = R_KB_glob(Rg_GA, Rg_AB, R_KB);
   //logMatrix("R_KB",R_KB);
 
   /*---------------------------------------------------*/
@@ -369,8 +411,10 @@ bool fakeGps::Init() {
     double yaw = M_PI - std::stod(bufS.substr(sz1 + sz2 + sz3 + sz4), &sz5);  // yaw
     double pitch = M_PI_2 - std::stod(bufS.substr(sz1 + sz2 + sz3 + sz4 + sz5), &sz6);  // roll
 
-    // Ska det vara transponat på denna kanske?
+    // Ska det vara transponat på denna kanske? NEJ
     R_KsK = rotFromAngles(yaw, pitch, roll);
+    Rg_KsK = R_KsK_glob(Rg_GA, Rg_AB, Rg_KB, R_KsK);
+    // logMatrix("R_KsK",R_KsK);
 
     // AERROR << "YAW: " << yaw;
     // AERROR << "PITCH: " << pitch;
@@ -400,8 +444,24 @@ bool fakeGps::Init() {
 
       double theta_april = tags[tagId][3] * (M_PI / 180);  // vinkel konverterad till radianer
       R_GA = rotFromAngles(theta_april, 0, 0);
+      Rg_GA = R_GA;
       //logMatrix("R_GA", R_GA);
     }
+
+    // HÄR HAR VI HÅRDKODAT IN MEDANS APRILTAGSYSTEMET ÄR TRASIGT
+    t_GA << tags[12][0], tags[12][1], tags[12][2];
+    double theta_april = tags[12][3] * (M_PI / 180);  // vinkel konverterad till radianer
+    R_GA = rotFromAngles(theta_april, 0, 0);
+    Rg_GA = R_GA;
+
+     
+    //logMatrix("R_GA", R_GA);
+      t_BA <<  0,1,0;
+      R_AB << -1,0,0,
+              0,-1,0,
+              0,0,1;
+      Rg_AB = R_AB_glob(Rg_GA, R_AB);
+ // HÄR SLUTAR HÅRDKODNINGEN
 
     /*----------------------------------------------------*/
     /*    SLUT PÅ INLÄSNING AV DATA FRÅN APRILTAGFILEN    */
@@ -420,6 +480,23 @@ bool fakeGps::Init() {
       //logVector("t_GKs", t_GKs);
     }
 
+    // HÄR HAR VI HÅRDKODAT IN MEDANS APRILTAGSYSTEMET ÄR TRASIGT
+    R_GKs = ekv6(R_GA, R_AB, R_KB, R_KsK);
+    Rg_GKs = R_GKs;
+
+    
+    //logMatrix("R_KsK", R_KsK);
+    //logMatrix("R_GKs", R_GKs);
+    //logMatrix("R_KsK*R_GKs", Rg_KsK * R_GKs);
+
+
+    t_GKs = ekv8(t_GA, t_BA, t_KB, t_KsK,
+                 R_GA, R_AB, R_KB, R_KsK);
+    logVector("t_GKs", t_GKs);
+    logVector("t_KsK", t_KsK);
+    logVector("t_GKs + R_GKs * t_KsK",t_GKs + R_GKs * t_KsK);
+    // HÄR SLUTAR DET HÅRDKODADE
+
     /*---------------------------------------------*/
     /*    SLUT PÅ BERÄKNING AV R_GKs OCH t_GKs     */
     /*---------------------------------------------*/
@@ -437,9 +514,9 @@ bool fakeGps::Init() {
     // Transponat på R_KsK
     //logVector("Bilen via kamera",t_GKs + R_GKs.transpose() * (t_KsK + R_KsK.transpose() * t_KB));
 
-    logVector("t_KsK (G)",R_GKs * t_KsK);
-    logVector("t_KsK (G)",R_GKs.transpose() * t_KsK);
-    logVector("t_KsK (Ks)",t_KsK);
+    //logVector("t_KsK (G)",R_GKs * t_KsK);
+    //logVector("t_KsK (G)",R_GKs.transpose() * t_KsK);
+    //logVector("t_KsK (Ks)",t_KsK);
 
 
     /* KOMENTARER FRÅN JOHAN 25/4 19:30
