@@ -232,8 +232,6 @@ void PublishCorrimu(Cord h /*const MessagePtr message*/) {
   imu_msg->mutable_euler_angles()->set_z(1 /* - 90 * DEG_TO_RAD_LOCAL*/);
   //
 
-  // logVector(h);
-
   corrimu_writer_->Write(imu);
 }
 
@@ -300,7 +298,6 @@ void aprilCallBack(
 
     // Vi byter bilens koordinatsystem
     t_BA << msg->x(), msg->z(), -msg->y();  // x till x, z till y, -y till z
-    //logVector("t_BA", t_BA);
   
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 3; j++) {
@@ -315,7 +312,6 @@ void aprilCallBack(
     rot_fix2 << -1, 0, 0, 0, 0, -1, 0, -1, 0;
 
     R_AB = rot_fix1 * R_AB * rot_fix2.transpose();
-    //logMatrix("R_AB",R_AB);
   }
 
 }
@@ -350,10 +346,8 @@ bool fakeGps::Init() {
 
   // Placeholder tills detta läses in från fil
   t_KB << 0, 0, 0;
-  //logVector("t_KB",t_KB);
 
   R_KB << 1, 0, 0, 0, 1, 0, 0, 0, 1;
-  //logMatrix("R_KB",R_KB);
 
   /*---------------------------------------------------*/
   /*    SLUT PÅ INLÄSNING AV DATA FRÅN KAMERAFILEN    */
@@ -374,31 +368,16 @@ bool fakeGps::Init() {
     t_KsK(2) = std::stod(bufS.substr(sz1), &sz2);
     t_KsK(1) = -std::stod(bufS.substr(sz1 + sz2), &sz3);
 
-    //logVector("t_KsK", t_KsK);
-
     double roll = -std::stod(bufS.substr(sz1 + sz2 + sz3), &sz4);  // pitch
     double yaw = M_PI - std::stod(bufS.substr(sz1 + sz2 + sz3 + sz4), &sz5);  // yaw
     double pitch = M_PI_2 - std::stod(bufS.substr(sz1 + sz2 + sz3 + sz4 + sz5), &sz6);  // roll
 
-    // Ska det vara transponat på denna kanske? NEJ
     R_KsK = rotFromAngles(yaw, pitch, roll);
-    // logMatrix("R_KsK",R_KsK);
 
-    // AERROR << "YAW: " << yaw;
-    // AERROR << "PITCH: " << pitch;
-    // AERROR << "ROLL: " << roll;
-    //logMatrix("R_KsK", R_KsK);
 
     /*--------------------------------------------------*/
     /*    SLUT PÅ INLÄSNING AV DATA FRÅN T265 KAMERAN   */
     /*--------------------------------------------------*/
-
-    // double speedz = std::stod(bufS.substr(sz1 + sz2 + sz3 + sz4 + sz5 + sz6),
-    // &sz7); double accX = std::stod(bufS.substr(sz1 + sz2 + sz3 + sz4 + sz5 +
-    // sz6 + sz7), &sz8); double accZ = std::stod(bufS.substr(sz1 + sz2 + sz3 +
-    // sz4 + sz5 + sz6 + sz7 + sz8));
-
-    // AERROR << speedz << " " << accX << " " << accZ;
 
     /*----------------------------------------------------*/
     /*    START PÅ INLÄSNING AV DATA FRÅN APRILTAGFILEN   */
@@ -408,26 +387,10 @@ bool fakeGps::Init() {
 
     if (detec) {
       t_GA << tags[tagId][0], tags[tagId][1], tags[tagId][2];
-      //logVector("t_GA", t_GA);
 
       double theta_april = tags[tagId][3] * (M_PI / 180);  // vinkel konverterad till radianer
       R_GA = rotFromAngles(theta_april, 0, 0);
-      //logMatrix("R_GA", R_GA);
     }
-
-    /*
-    // HÄR HAR VI HÅRDKODAT IN MEDANS APRILTAGSYSTEMET ÄR TRASIGT
-    t_GA << tags[12][0], tags[12][1], tags[12][2];
-    double theta_april = tags[12][3] * (M_PI / 180);  // vinkel konverterad till radianer
-    R_GA = rotFromAngles(theta_april, 0, 0);
-     
-    //logMatrix("R_GA", R_GA);
-      t_BA <<  0,1,0;
-      R_AB << -1,0,0,
-              0,-1,0,
-              0,0,1;
- // HÄR SLUTAR HÅRDKODNINGEN
-    */
 
     /*----------------------------------------------------*/
     /*    SLUT PÅ INLÄSNING AV DATA FRÅN APRILTAGFILEN    */
@@ -439,54 +402,17 @@ bool fakeGps::Init() {
 
     if (detec) {
       R_GKs = ekv6(R_GA, R_AB, R_KB, R_KsK);
-      //logMatrix("R_GKs", R_GKs);
 
       t_GKs = ekv8(t_GA, t_BA, t_KB, t_KsK,
                    R_GA, R_AB, R_KB, R_KsK);
-      //logVector("t_GKs", t_GKs);
     }
-
-    /*
-    // HÄR HAR VI HÅRDKODAT IN MEDANS APRILTAGSYSTEMET ÄR TRASIGT
-    R_GKs = ekv6(R_GA, R_AB, R_KB, R_KsK);
-
-    
-    //logMatrix("R_KsK", R_KsK);
-    //logMatrix("R_GKs", R_GKs);
-    //logMatrix("R_KsK*R_GKs", Rg_KsK * R_GKs);
-
-
-    t_GKs = ekv8(t_GA, t_BA, t_KB, t_KsK,
-                 R_GA, R_AB, R_KB, R_KsK);
-    logVector("t_GKs", t_GKs);
-    logVector("t_KsK", t_KsK);
-    logVector("t_GKs + R_GKs * t_KsK",t_GKs + R_GKs * t_KsK);
-    // HÄR SLUTAR DET HÅRDKODADE
-    */
 
     /*---------------------------------------------*/
     /*    SLUT PÅ BERÄKNING AV R_GKs OCH t_GKs     */
     /*---------------------------------------------*/
 
-    //logMatrix("R_KsK", R_KsK);
-    //logMatrix("R_GKs", R_GKs);
     logVector("t_GKs + R_GKs * t_KsK",t_GKs + R_GKs * t_KsK);
-    logVector("t_GA - R_GA * R_AB * t_BA",t_GA - R_GA * R_AB * t_BA);
-    //logVector("t_GKs fake",  -R_AB.transpose() * (t_BA + R_KsK * t_KsK));
-    //logVector("t_KKs (K)",  R_KsK.transpose() * -t_KsK);
-    //logVector("t_KsK",  t_KsK);
-    //logVector("0", t_KsK - R_KsK * (R_KsK.transpose() * t_KsK));
-    //logVector("t_GKs",  t_GKs);
-
-    //logVector("Bilen via april", t_GA - R_GA.transpose() * R_AB.transpose() * t_BA);
-
-    // Transponat på R_KsK
-    //logVector("Bilen via kamera",t_GKs + R_GKs.transpose() * (t_KsK + R_KsK.transpose() * t_KB));
-
-    //logVector("t_KsK (G)",R_GKs * t_KsK);
-    //logVector("t_KsK (G)",R_GKs.transpose() * t_KsK);
-    //logVector("t_KsK (Ks)",t_KsK);
-    
+    logVector("t_GA - R_GA * R_AB * t_BA",t_GA - R_GA * R_AB * t_BA);    
 
     PublishOdometry(t);
     PublishCorrimu(t);
