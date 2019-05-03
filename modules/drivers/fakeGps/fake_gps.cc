@@ -328,8 +328,8 @@ void aprilCallBack(
 bool fakeGps::Init() {
   AERROR << "Commontest component init";
 
-  tags = initFile("/apollo/modules/drivers/fakeGps/tags.txt"); 
-  kameraOffset = initFile("/apollo/modules/drivers/fakeGps/kameraOffset.txt");
+  tags = initFile("/apollo/modules/drivers/fakeGps/txtSaker/tags.txt"); 
+  kameraOffset = initFile("/apollo/modules/drivers/fakeGps/txtSaker/kameraOffset.txt");
   
   auto talker = talker_node->CreateWriter<Chatter>("channel/chatter");
   auto listener_node = apollo::cyber::CreateNode("listener");
