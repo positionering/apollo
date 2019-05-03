@@ -84,6 +84,7 @@ std::shared_ptr<apollo::cyber::Writer<apollo::localization::CorrectedImu>>
     corrimu_writer_ = talker_node->CreateWriter<CorrectedImu>(FLAGS_imu_topic);
 
 std::vector<std::vector<double>> tags;
+std::vector<std::vector<double>> kameraOffset;
 int detec = 0;
 int tagId = 0;
 
@@ -235,9 +236,11 @@ void PublishCorrimu(Cord h /*const MessagePtr message*/) {
   corrimu_writer_->Write(imu);
 }
 
-void initFile() {
-  std::ifstream file("/apollo/modules/drivers/fakeGps/file.txt");
+std::vector< std::vector<double>> initFile(std::string p) {
+  std::ifstream file(p);
 
+  std::vector< std::vector<double>> tempsak;
+  
   int sz = 1 + std::count(std::istreambuf_iterator<char>(file),
                           std::istreambuf_iterator<char>(), '\n');
 
@@ -252,9 +255,11 @@ void initFile() {
         file >> dubletas;
         temp.push_back(dubletas);
       }
-      tags.push_back(temp);
+      tempsak.push_back(temp);
     }
   }
+  
+  return tempsak;
 }
 
 
@@ -323,8 +328,9 @@ void aprilCallBack(
 bool fakeGps::Init() {
   AERROR << "Commontest component init";
 
-  initFile();
-
+  tags = initFile("/apollo/modules/drivers/fakeGps/tags.txt"); 
+  kameraOffset = initFile("/apollo/modules/drivers/fakeGps/kameraOffset.txt");
+  
   auto talker = talker_node->CreateWriter<Chatter>("channel/chatter");
   auto listener_node = apollo::cyber::CreateNode("listener");
 
