@@ -1,0 +1,1 @@
+/usr/bin/c++   -Wno-narrowing   CMakeFiles/pose.dir/realsense-pose.cpp.o  -o pose -rdynamic /usr/local/lib/librealsense2.so.2.21.0 -Wl,-rpath,/usr/local/lib 

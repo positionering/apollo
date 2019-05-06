@@ -338,13 +338,13 @@ APOLLO_DEV="realsense_dev_${USER}"
         -e DOCKER_USER_ID=$USER_ID \
         -e DOCKER_GRP="$GRP" \
         -e DOCKER_GRP_ID=$GRP_ID \
-        -e DOCKER_IMG="apolloauto/apollo:realsense_subdock" \
+        -e DOCKER_IMG="realsense_dev" \
         -e OMP_NUM_THREADS=1 \
         $(local_volumes) \
         --net host \
         -w /apollo \
         -v /dev/null:/dev/raw1394 \
-        "apolloauto/apollo:realsense_subdock" \
+        "realsense_dev" \
         /bin/bash
 
 }

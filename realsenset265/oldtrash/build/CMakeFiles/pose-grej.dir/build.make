@@ -106,7 +106,7 @@ pose__grej_EXTERNAL_OBJECTS =
 pose-grej: CMakeFiles/pose-grej.dir/realsense-pose.cpp.o
 pose-grej: CMakeFiles/pose-grej.dir/cArduino.cpp.o
 pose-grej: CMakeFiles/pose-grej.dir/build.make
-pose-grej: /usr/local/lib/librealsense2.so.2.19.2
+pose-grej: /usr/local/lib/librealsense2.so.2.21.0
 pose-grej: CMakeFiles/pose-grej.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --red --bold "Linking CXX executable pose-grej"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/pose-grej.dir/link.txt --verbose=$(VERBOSE)

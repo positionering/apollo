@@ -1,111 +1,65 @@
-#ifndef cArduino_H
-#define cArduino_H 1
-
-/*
-Arduino Serial Port Comunication
-
-Arduino information:
-	http://playground.arduino.cc/Interfacing/LinuxTTY
-
-	warning setting up port speed does not work :/ you nead to do in mannualy:
-
-		stty -F /dev/ttyUSB0 cs8 115200 ignbrk -brkint -icrnl -imaxbel -opost -onlcr -isig -icanon -iexten -echo -echoe -echok -echoctl -echoke noflsh -ixon -crtscts
-
-Serial Conection Based On:
-	Gary Frerking   gary@frerking.org
-	http://www.tldp.org/HOWTO/Serial-Programming-HOWTO/x115.html
-*/
-
-
-#include <termios.h>
+#include <iostream>
 #include <string>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <termios.h>
 
-using namespace std;
+#define _POSIX_SOURCE 1
 
-enum ArduinoBaundRate{
-  B300bps  = B300,
-  B600bps  = B600,
-  B1200bps = B1200,
-  B2400bps = B2400,
-  B4800bps = B4800,
-  B9600bps = B9600,
-//B14400bps= B14400,
-  B19200bps=B19200,
-//B28800bps=B28800
-//B38400bps=38400
-//B57600bps=57600
-  B115200bps=115200
-};
-
-class cArduino{
-
-private:
-        /*serial port FileDescriptor*/
-        int fd=0;
-
-	/*memory of port settings*/
-        struct termios oldtio;
-
-        /*Arduino FileName*/
-        char *MODEMDEVICE =0;
-
+class serial{
 public:
 
-	cArduino();
-	cArduino(ArduinoBaundRate baundRate);
-	cArduino(ArduinoBaundRate baundRate,char *deviceFileName);
 
-	~cArduino();
+void init(std::string dev ){
+    fd = open(dev.c_str(), O_RDWR | O_NOCTTY );
+    if (fd <0) {perror(dev.c_str()); exit(-1); } 
+    // Improvement No. 1 I save old setting and clean the new one 
+    tcgetattr(fd,&oldtio);
+    bzero(&newtio, sizeof(newtio));
 
-	/*get Arduino Device FileName*/
-	char* getDeviceName();
-	/*Find Arduino device*/
-	char *findArduino();
+    // Here I set all the flags to vars at once
+    newtio.c_cflag = B9600 | CRTSCTS | CS8 | CLOCAL | CREAD;
+    newtio.c_iflag = IGNPAR | ICRNL;
+    newtio.c_oflag = 0;
+    newtio.c_lflag = ICANON;
+    //here I set some new flags..
+    newtio.c_cc[VINTR]    = 0;     /* Ctrl-c */
+    newtio.c_cc[VQUIT]    = 0;     /* Ctrl-\ */
+    newtio.c_cc[VERASE]   = 0;     /* del */
+    newtio.c_cc[VKILL]    = 0;     /* @ */
+    newtio.c_cc[VEOF]     = 4;     /* Ctrl-d */
+    newtio.c_cc[VTIME]    = 0;     /* inter-character timer unused */
+    newtio.c_cc[VMIN]     = 1;     /* blocking read until 1 character  arrives */
+    newtio.c_cc[VSWTC]    = 0;     /* '\0' */
+    newtio.c_cc[VSTART]   = 0;     /* Ctrl-q */
+    newtio.c_cc[VSTOP]    = 0;     /* Ctrl-s */
+    newtio.c_cc[VSUSP]    = 0;     /* Ctrl-z */
+    newtio.c_cc[VEOL]     = 0;     /* '\0' */
+    newtio.c_cc[VREPRINT] = 0;     /* Ctrl-r */
+    newtio.c_cc[VDISCARD] = 0;     /* Ctrl-u */
+    newtio.c_cc[VWERASE]  = 0;     /* Ctrl-w */
+    newtio.c_cc[VLNEXT]   = 0;     /* Ctrl-v */
+    newtio.c_cc[VEOL2]    = 0;     /* '\0' */
+    // and I finally save the settings 
+    tcflush(fd, TCIFLUSH);
+    tcsetattr(fd,TCSANOW,&newtio);
+}
 
-	/*is Arduino serial port Open?*/
-	bool isOpen();
+~serial(){
+    close(fd);
+}
 
-	/*open serial port, find device*/
-	bool open(ArduinoBaundRate baundRate);
-
-	/*open serial port*/
-	bool open(ArduinoBaundRate baundRate,char *DeviceFileName);
-
-	/*zamykanie*/
-	void close();
-
-	/*Flush port*/
-	void flush();
-
-	/*read from Arduino*/
-	string read();
-
-	/*read form arduino (witch timeout)
-	 *ret - responce
-	 *timeOut_MicroSec - (mikro sekundy 10-6)
-	 *print_error - print errors to stderr?
-	*/
-	bool read(
-		string &ret,
-		unsigned long int timeOut_MicroSec=(1*1000000),//1sec
-		bool print_error=false
-		);
-
-	/*
-	odczytuj az do napotkania znaku / lub przekroczenia czasu
-	 *ret - responce
-	 *ultin - do jakiego znaku czytac
-	 *timeOut_MicroSec - (mikro sekundy 10-6)
-	*/
-	bool read(
-		string &ret,
-		char until,
-		unsigned long int timeOut_MicroSec
-		);
-
-	/*write to Arduinio*/
-	void write(string text);
-
+    std::string sread(){
+        res = read(fd,buf,255);
+        buf[res]=0;
+        return buf;
+    }
+    void swrite(const char* input){
+        write(fd,input,sizeof(input));
+    }
+private:
+    int fd,c,res;
+    struct termios oldtio,newtio;
+    char buf[255];
 };
-
-#endif

@@ -342,11 +342,12 @@ bool fakeGps::Init() {
   
   std::string logPath =  "/apollo/modules/drivers/fakeGps/logs/" + currentDateTime() + ".log";
   
-  freopen(logPath, "w", stdout);
+  freopen(logPath.c_str(), "w", stdout);
+  
+  std::cout << "awdqwd" << std::endl;
   
   tags = initFile("/apollo/modules/drivers/fakeGps/txtSaker/tags.txt"); 
   kameraOffset = initFile("/apollo/modules/drivers/fakeGps/txtSaker/kameraOffset.txt");
-  
   
   
   auto talker = talker_node->CreateWriter<Chatter>("channel/chatter");
@@ -369,11 +370,11 @@ bool fakeGps::Init() {
   /*---------------------------------------------------*/
 
   // Placeholder tills detta läses in från fil
-  t_KB << kameraOffset[0], kameraOffset[1], kameraOffset[2];
+  t_KB << kameraOffset[0][0], kameraOffset[0][1], kameraOffset[0][2];
 
-  R_KB << kameraOffset[3], kameraOffset[4], kameraOffset[5], 
-          kameraOffset[6], kameraOffset[7], kameraOffset[8], 
-          kameraOffset[9], kameraOffset[10], kameraOffset[11];
+  R_KB << kameraOffset[1][0], kameraOffset[1][1], kameraOffset[1][2], 
+          kameraOffset[2][0], kameraOffset[2][1], kameraOffset[2][2], 
+          kameraOffset[3][0], kameraOffset[3][1], kameraOffset[3][2];
 
   /*---------------------------------------------------*/
   /*    SLUT PÅ INLÄSNING AV DATA FRÅN KAMERAFILEN    */
@@ -444,6 +445,7 @@ bool fakeGps::Init() {
     PublishCorrimu(t);
 
   }
+  fclose (stdout);
   return true;
 }
 
