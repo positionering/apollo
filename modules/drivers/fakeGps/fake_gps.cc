@@ -7,6 +7,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <time.h>
 #include "Eigen/Core"
 #include "Eigen/Geometry"
 
@@ -236,6 +237,17 @@ void PublishCorrimu(Cord h /*const MessagePtr message*/) {
   corrimu_writer_->Write(imu);
 }
 
+// Get current date/time, format is YYYY-MM-DD.HH:mm:ss
+const std::string currentDateTime() {
+    time_t     now = time(0);
+    struct tm  tstruct;
+    char       buf[80];
+    tstruct = *localtime(&now);
+    strftime(buf, sizeof(buf), "%Y-%m-%d_%X", &tstruct);
+
+    return buf;
+}
+
 std::vector< std::vector<double>> initFile(std::string p) {
   std::ifstream file(p);
 
@@ -327,9 +339,15 @@ void aprilCallBack(
 
 bool fakeGps::Init() {
   AERROR << "Commontest component init";
-
+  
+  std::string logPath =  "/apollo/modules/drivers/fakeGps/logs/" + currentDateTime() + ".log";
+  
+  freopen(logPath, "w", stdout);
+  
   tags = initFile("/apollo/modules/drivers/fakeGps/txtSaker/tags.txt"); 
   kameraOffset = initFile("/apollo/modules/drivers/fakeGps/txtSaker/kameraOffset.txt");
+  
+  
   
   auto talker = talker_node->CreateWriter<Chatter>("channel/chatter");
   auto listener_node = apollo::cyber::CreateNode("listener");
@@ -351,9 +369,11 @@ bool fakeGps::Init() {
   /*---------------------------------------------------*/
 
   // Placeholder tills detta läses in från fil
-  t_KB << 0, 0, 0;
+  t_KB << kameraOffset[0], kameraOffset[1], kameraOffset[2];
 
-  R_KB << 1, 0, 0, 0, 1, 0, 0, 0, 1;
+  R_KB << kameraOffset[3], kameraOffset[4], kameraOffset[5], 
+          kameraOffset[6], kameraOffset[7], kameraOffset[8], 
+          kameraOffset[9], kameraOffset[10], kameraOffset[11];
 
   /*---------------------------------------------------*/
   /*    SLUT PÅ INLÄSNING AV DATA FRÅN KAMERAFILEN    */
