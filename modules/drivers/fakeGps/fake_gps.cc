@@ -109,6 +109,8 @@ Cord aprilToD435;
 Eigen::Matrix3d R_GA, R_AB, R_KB, R_KsK, R_GKs;
 Eigen::Vector3d t_GA, t_BA, t_KB, t_KsK, t_GKs;
 
+Eigen::Vector3d t_GA, t_BA, t_KB, t_KsK, t_GKs;
+
 /*-----------------------------------------------*/
 /*  END OF SECTION FOR DEFINISION OF VARIABLES  */
 /*-----------------------------------------------*/
@@ -437,6 +439,17 @@ bool fakeGps::Init() {
     /*---------------------------------------------*/
     /*    SLUT PÅ BERÄKNING AV R_GKs OCH t_GKs     */
     /*---------------------------------------------*/
+
+
+    /*-------------------------------------------------------*/
+    /*    START PÅ BERÄKNING AV POSSITION MED HJULODOMETRI   */
+    /*-------------------------------------------------------*/
+
+
+
+    /*-------------------------------------------------------*/
+    /*     SLUT PÅ BERÄKNING AV POSSITION MED HJULODOMETRI   */
+    /*-------------------------------------------------------*/
 
     logVector("t_GKs + R_GKs * t_KsK",t_GKs + R_GKs * t_KsK);
     logVector("t_GA - R_GA * R_AB * t_BA",t_GA - R_GA * R_AB * t_BA);    
