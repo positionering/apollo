@@ -110,7 +110,9 @@ Cord aprilToD435;
 Eigen::Matrix3d R_GA, R_AB, R_KB, R_KsK, R_GKs;
 Eigen::Vector3d t_GA, t_BA, t_KB, t_KsK, t_GKs;
 
-Eigen::Vector3d t_GA, t_BA, t_KB, t_KsK, t_GKs;
+Eigen::Vector3d t_wo, step;
+int wo_tick_l, wo_tick_r, wo_tick_l_old, wo_tick_r_old;
+double alfa, theta;
 
 /*-----------------------------------------------*/
 /*  END OF SECTION FOR DEFINISION OF VARIABLES  */
@@ -379,20 +381,7 @@ bool fakeGps::Init() {
   std::string temp = "";
   s.init("/dev/ttyACM0");
   std::size_t az,az1,az2;
-  
-      
-   //inläsningsdelen, någonstans i loopen du vill ha den
-	 do{
-	  temp = s.sread();
-	 } while(temp.size()< 9);
-	 
-	  double wo_speed_l = std::stod (temp,&az);
-		double wo_speed_2 = std::stod (temp.substr(az),&az1);
-		            
-		int wo_tick_l = std::stoi (temp.substr(az+az1),&az2);
-		int wo_tick_r = std::stoi (temp.substr(az+az1+az2));
-		
-		
+	
 
   /*---------------------------------------------------*/
   /*    SLUT PÅ initiering av arduino                 */
@@ -480,11 +469,55 @@ bool fakeGps::Init() {
     /*    START PÅ BERÄKNING AV POSSITION MED HJULODOMETRI   */
     /*-------------------------------------------------------*/
 
+      do{
+        temp = s.sread();
+      } while(temp.size()< 9);
+      
+        //double wo_speed_l = std::stod (temp,&az);
+        //double wo_speed_2 = std::stod (temp.substr(az),&az1);
+                    
+        wo_tick_l = std::stoi (temp.substr(az+az1),&az2);
+        wo_tick_r = std::stoi (temp.substr(az+az1+az2));
 
+        int diff_l = wo_tick_l - wo_tick_l_old;
+        int diff_r = wo_tick_r - wo_tick_r_old;
+
+        if(diff_l > 5){
+          diff_l = 0;
+        }
+        if(diff_r > 5){
+          diff_r = 0;
+        }
+
+        alfa = atan2(diff_l - diff_r, 2*1.08/(0.55*M_PI/29));
+        theta = theta - 2*alfa;
+
+        double dist = (0.55*M_PI/29) * (diff_l + diff_r)/2;
+
+        step << dist*cos(theta) << dist*sin(theta) << 0;
+
+        t_wo = t_wo + step;
 
     /*-------------------------------------------------------*/
     /*     SLUT PÅ BERÄKNING AV POSSITION MED HJULODOMETRI   */
     /*-------------------------------------------------------*/
+
+    /*---------------------------------------------------------*/
+    /*    START PÅ KALIBRERING AV POSSITION MED HJULODOMETRI   */
+    /*---------------------------------------------------------*/
+
+    if(detec){
+      t_wo = t_GA - R_GA * R_AB * t_BA;
+      Eigen::Vector3d y_unit(0,1,0);
+      Eigen::Vector3d fram = R_GA * R_AB * fram;
+      theta = acos(y_unit.dot(fram));
+      theta = ((y_unit.cross(fram))(2) > 0)? theta:-theta;
+
+    }
+
+    /*---------------------------------------------------------*/
+    /*    START PÅ KALIBRERING AV POSSITION MED HJULODOMETRI   */
+    /*---------------------------------------------------------*/
 
     logVector("t_GKs + R_GKs * t_KsK",t_GKs + R_GKs * t_KsK);
     logVector("t_GA - R_GA * R_AB * t_BA",t_GA - R_GA * R_AB * t_BA);    
