@@ -110,9 +110,9 @@ Cord aprilToD435;
 Eigen::Matrix3d R_GA, R_AB, R_KB, R_KsK, R_GKs;
 Eigen::Vector3d t_GA, t_BA, t_KB, t_KsK, t_GKs;
 
-Eigen::Vector3d t_wo, step;
+Eigen::Vector3d t_wo;
 int wo_tick_l, wo_tick_r, wo_tick_l_old, wo_tick_r_old;
-double alfa, theta;
+double theta, wo_speed_1, wo_speed_2;
 
 /*-----------------------------------------------*/
 /*  END OF SECTION FOR DEFINISION OF VARIABLES  */
@@ -366,10 +366,10 @@ bool fakeGps::Init() {
               "channel/apriltags", aprilCallBack);
 
   //t265 init pipe inläsning från myfifo
-  int MAX_BUF = 128;
-  int fd;
-  std::string myfifo = "/tmp/myfifo";
-  char buf[MAX_BUF];
+ // int MAX_BUF = 128;
+ // int fd;
+ // std::string myfifo = "/tmp/myfifo";
+ // char buf[MAX_BUF];
   //slut på initiering
   
   
@@ -430,20 +430,20 @@ bool fakeGps::Init() {
   /*---------------------------------------------------*/
   /*    SLUT PÅ INLÄSNING AV DATA FRÅN KAMERAFILEN    */
   /*---------------------------------------------------*/
-
   while (apollo::cyber::OK()) {
   
     //läsning av t265 pipe
-    fd = open(myfifo.c_str(), O_RDONLY /* | O_NONBLOCK */);
+   /*
+    fd = open(myfifo.c_str(), O_RDONLY);
     read(fd, buf, MAX_BUF);
     close(fd);
     std::string bufS(buf);
     std::size_t sz1, sz2, sz3, sz4, sz5, sz6;  //, sz7, sz8;
-
+    */
     /*---------------------------------------------------*/
     /*    START PÅ INLÄSNING AV DATA FRÅN T265 KAMERAN   */
     /*---------------------------------------------------*/
-
+/*
     t_KsK(0) = std::stod(bufS, &sz1);
     t_KsK(2) = std::stod(bufS.substr(sz1), &sz2);
     t_KsK(1) = -std::stod(bufS.substr(sz1 + sz2), &sz3);
@@ -453,7 +453,7 @@ bool fakeGps::Init() {
     double pitch = M_PI_2 - std::stod(bufS.substr(sz1 + sz2 + sz3 + sz4 + sz5), &sz6);  // roll
 
     R_KsK = rotFromAngles(yaw, pitch, roll);
-
+*/
 
     /*--------------------------------------------------*/
     /*    SLUT PÅ INLÄSNING AV DATA FRÅN T265 KAMERAN   */
@@ -500,15 +500,23 @@ bool fakeGps::Init() {
         temp = s.sread();
       } while(temp.size()< 9);
       
-        //double wo_speed_l = std::stod (temp,&az);
-        //double wo_speed_2 = std::stod (temp.substr(az),&az1);
+      AERROR << temp;
+      
+      try{
+        wo_speed_1 = std::stod (temp,&az);
+        wo_speed_2 = std::stod (temp.substr(az),&az1);
                     
-        wo_tick_l = std::stoi (temp.substr(az+az1),&az2);
-        wo_tick_r = std::stoi (temp.substr(az+az1+az2));
-
+        wo_tick_l = std::stod (temp.substr(az+az1),&az2);
+        wo_tick_r = std::stod (temp.substr(az+az1+az2));
+      } catch(const std::exception& e){
+        wo_speed_1 = 0;
+        wo_speed_2 = 0;
+        wo_tick_l = 0;
+        wo_tick_r = 0;
+        AERROR<< "catches";
+      }
         int diff_l = wo_tick_l - wo_tick_l_old;
         int diff_r = wo_tick_r - wo_tick_r_old;
-
         if(diff_l > 5){
           diff_l = 0;
         }
@@ -516,12 +524,14 @@ bool fakeGps::Init() {
           diff_r = 0;
         }
 
-        alfa = atan2(diff_l - diff_r, 2*1.08/(0.55*M_PI/29));
+        double alfa = atan2(diff_l - diff_r, 2*1.08/(0.55*M_PI/29));
         theta = theta - 2*alfa;
 
         double dist = (0.55*M_PI/29) * (diff_l + diff_r)/2+0.9;
 
-        step << dist*cos(theta) << dist*sin(theta) << 0;
+
+        Eigen::Vector3d step(dist*cos(theta), dist*sin(theta), 0);
+      //AERROR<< "hit?";
 
         t_wo = t_wo + step;
 
@@ -532,7 +542,7 @@ bool fakeGps::Init() {
     /*---------------------------------------------------------*/
     /*    START PÅ KALIBRERING AV POSSITION MED HJULODOMETRI   */
     /*---------------------------------------------------------*/
-
+    
     if(detec){
       t_wo = t_GA - R_GA * R_AB * t_BA;
       Eigen::Vector3d y_unit(0,1,0);

@@ -16,6 +16,7 @@ cc_library(
     ],
     hdrs = [
         "fake_gps.h",
+        "cArduino.h",
     ],
     deps = [
         "//cyber",
