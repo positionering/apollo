@@ -519,7 +519,7 @@ bool fakeGps::Init() {
         alfa = atan2(diff_l - diff_r, 2*1.08/(0.55*M_PI/29));
         theta = theta - 2*alfa;
 
-        double dist = (0.55*M_PI/29) * (diff_l + diff_r)/2;
+        double dist = (0.55*M_PI/29) * (diff_l + diff_r)/2+0.9;
 
         step << dist*cos(theta) << dist*sin(theta) << 0;
 
