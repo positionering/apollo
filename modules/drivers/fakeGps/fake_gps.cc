@@ -20,6 +20,7 @@
 #include "modules/common/adapters/adapter_gflags.h"
 #include "modules/drivers/apriltags/proto/aprilTags.pb.h"
 #include "modules/drivers/fakeGps/fake_gps.h"
+#include "modules/drivers/fakeGps/cArduino.h"
 #include "modules/drivers/fakeGps/proto/fakeGps.pb.h"
 #include "modules/drivers/gnss/proto/gnss_best_pose.pb.h"
 #include "modules/drivers/gnss/proto/gnss_raw_observation.pb.h"
@@ -365,6 +366,40 @@ bool fakeGps::Init() {
 
   Cord t;
 
+  /*---------------------------------------------------*/
+  /*    START PÅ initiering av arduino                 */
+  /*---------------------------------------------------*/  
+  
+
+  //initierings delen, ovanför loopen  
+  
+  serial s;
+  std::string temp = "";
+  s.init("/dev/ttyACM0");
+  std::size_t az,az1,az2;
+  
+      
+   //inläsningsdelen, någonstans i loopen du vill ha den
+	 do{
+	  temp = s.sread();
+	 } while(temp.size()< 9);
+	 
+	  double wo_speed_l = std::stod (temp,&az);
+		double wo_speed_2 = std::stod (temp.substr(az),&az1);
+		            
+		int wo_tick_l = std::stoi (temp.substr(az+az1),&az2);
+		int wo_tick_r = std::stoi (temp.substr(az+az1+az2));
+		
+		
+
+  /*---------------------------------------------------*/
+  /*    SLUT PÅ initiering av arduino                 */
+  /*---------------------------------------------------*/
+  
+  
+  
+  
+  
   /*---------------------------------------------------*/
   /*    START PÅ INLÄSNING AV DATA FRÅN KAMERAFILEN    */
   /*---------------------------------------------------*/
