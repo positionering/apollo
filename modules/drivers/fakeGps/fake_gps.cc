@@ -188,7 +188,9 @@ void PublishOdometry(Cord p /*const MessagePtr message*/) {
   gps_msg->mutable_position()->set_x(1);
   gps_msg->mutable_position()->set_y(1);
   gps_msg->mutable_position()->set_z(1);
-
+  
+  
+  
   // logVector(p);
 
   // 2. orientation
@@ -363,11 +365,14 @@ bool fakeGps::Init() {
           ->CreateReader<apollo::modules::drivers::apriltags::proto::apriltags>(
               "channel/apriltags", aprilCallBack);
 
+  //t265 init pipe inläsning från myfifo
   int MAX_BUF = 128;
   int fd;
   std::string myfifo = "/tmp/myfifo";
   char buf[MAX_BUF];
-
+  //slut på initiering
+  
+  
   Cord t;
 
   /*---------------------------------------------------*/
@@ -388,6 +393,26 @@ bool fakeGps::Init() {
   /*---------------------------------------------------*/
   
   
+  /*--------------------------------------------------*/
+  /*    init pipe för att skicka till andra gruppen  */
+  /*--------------------------------------------------*/
+  
+  /*
+  int fd2fifo;
+  std::string grupp2fifo = "/tmp/posdata";
+  mkfifo(grupp2fifo.c_str(), 0666);
+    
+  std::string writePipe = "0.000000000 0.000000000";
+	
+	write(fd2fifo, writePipe.c_str(),writePipe.size());
+	close(fd2fifo);
+  
+  unlink(grupp2fifo.c_str());
+  */
+  
+  /*-------------------------------------------------*/
+  /*    slut på pipe initiering                     */
+  /*-----------------------------------------------*/
   
   
   
@@ -407,6 +432,8 @@ bool fakeGps::Init() {
   /*---------------------------------------------------*/
 
   while (apollo::cyber::OK()) {
+  
+    //läsning av t265 pipe
     fd = open(myfifo.c_str(), O_RDONLY /* | O_NONBLOCK */);
     read(fd, buf, MAX_BUF);
     close(fd);

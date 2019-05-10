@@ -145,6 +145,13 @@ int main(int argc, char * argv[]) try {
         float vfilt_old2 = 0;
         
         auto old_start = std::chrono::system_clock::now();
+        
+        int fd;
+        std::string myfifo = "/tmp/myfifo";
+        mkfifo(myfifo.c_str(), 0666);
+    
+        std::string writePipe = "0.000 0.000 0.000";
+        
         while (true) {
             
             //testa att göra if satser på alla dessa för att kontrollera vilken frame det igentligen är!
@@ -269,8 +276,25 @@ int main(int argc, char * argv[]) try {
                     "  T265 sp: " << pose_data.velocity << " " << count1 << " " << count2 << 
                     "     Sp2: " << sp2  << std::endl;
                     
+            
+            
+            fd = open(myfifo.c_str(), O_WRONLY/* | O_NONBLOCK*/ );
+            
+            writePipe = (fToString(pose_data.translation.x) + " " + fToString(pose_data.translation.y) + " " 
+	             + fToString(pose_data.translation.z) + " " + fToString(get_theta().x) + " " + 
+                 fToString(get_theta().y) + " " + fToString(get_theta().z) + " " + 
+                 fToString((speed1+speed2)/2.0) + " " + fToString(accel_data.x) + " " + fToString(accel_data.z));
+	
+	//writePipe = fToString(pose_data.translation.x) + " " + fToString(pose_data.translation.z);
+	//cout << writePipe << 
+	
+	write(fd, writePipe.c_str(),writePipe.size());
+	close(fd);	   
+            
+            
             }
-        
+            
+        unlink(myfifo.c_str());
         return EXIT_SUCCESS;
 }
 catch (const rs2::error & e) {
