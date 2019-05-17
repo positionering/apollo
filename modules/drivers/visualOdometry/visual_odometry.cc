@@ -19,15 +19,14 @@
 
 #include "modules/common/adapters/adapter_gflags.h"
 #include "modules/drivers/apriltags/proto/aprilTags.pb.h"
-#include "modules/drivers/fakeGps/fake_gps.h"
-#include "modules/drivers/fakeGps/proto/fakeGps.pb.h"
+#include "modules/drivers/visualOdometry/visual_odometry.h"
+#include "modules/drivers/visualOdometry/proto/visualOdometry.pb.h"
 #include "modules/drivers/gnss/proto/gnss_best_pose.pb.h"
 #include "modules/drivers/gnss/proto/gnss_raw_observation.pb.h"
 #include "modules/drivers/gnss/proto/heading.pb.h"
 #include "modules/drivers/gnss/proto/ins.pb.h"
 #include "modules/localization/proto/gps.pb.h"
 #include "modules/localization/proto/imu.pb.h"
-#include <chrono>
 
 /**
  * ----------------------------------------------------
@@ -66,7 +65,7 @@ using apollo::cyber::Time;
 using apollo::drivers::gnss::Ins;
 using apollo::localization::CorrectedImu;
 using apollo::localization::Gps;
-using apollo::modules::drivers::fakeGps::proto::Chatter;
+using apollo::modules::drivers::visualOdometry::proto::Chatter;
 
 using MessagePtr = ::google::protobuf::Message *;
 
@@ -156,15 +155,6 @@ void logMatrix(std::string s, Eigen::Matrix3d l) {
   }
 }
 
-void logMatrix(std::string s, Eigen::Matrix3d l, int t) {
-  std::cout << "******************" << std::endl;
-  std::cout << s << std::endl;
-  for (int i = 0; i < 3; i++) {
-    std::cout << std::fixed << std::setprecision(3) << l(i, 0) << " " << l(i, 1) << " " << l(i, 2) << std::endl;
-  }
-}
-
-
 void logVector(std::string s, std::vector<double> l) {
   AERROR << "---------------------------";
   AERROR << s << " " << l[0] << " " << l[1] << " " << l[2];
@@ -173,11 +163,6 @@ void logVector(std::string s, std::vector<double> l) {
 void logVector(std::string s, Eigen::Vector3d l) {
   AERROR << "---------------------------";
   AERROR << std::fixed << std::setprecision(3) << s << " " << l(0) << " " << l(1) << " " << l(2);
-}
-
-void logVector(std::string s, Eigen::Vector3d l, int t) {
-  auto ms = std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch());
-  std::cout << ms.count() <<" " << l[0] << " " << l[1] << " " << l[2] << std::endl;
 }
 
 void PublishOdometry(Cord p /*const MessagePtr message*/) {
@@ -352,18 +337,17 @@ void aprilCallBack(
 /*-----------------------------------------------*/
 
 
-bool fakeGps::Init() {
-
-  //auto ms = std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch());
-
+bool visualOdometry::Init() {
   AERROR << "Commontest component init";
   
-  std::string logPath =  "/apollo/modules/drivers/fakeGps/logs/" + currentDateTime() + ".log";
+  std::string logPath =  "/apollo/modules/drivers/visualOdometry/logs/" + currentDateTime() + ".log";
   
   freopen(logPath.c_str(), "w", stdout);
   
-  tags = initFile("/apollo/modules/drivers/fakeGps/txtSaker/tags.txt"); 
-  kameraOffset = initFile("/apollo/modules/drivers/fakeGps/txtSaker/kameraOffset.txt");
+  std::cout << "awdqwd" << std::endl;
+  
+  tags = initFile("/apollo/modules/drivers/visualOdometry/txtSaker/tags.txt"); 
+  kameraOffset = initFile("/apollo/modules/drivers/visualOdometry/txtSaker/kameraOffset.txt");
   
   
   auto talker = talker_node->CreateWriter<Chatter>("channel/chatter");
@@ -386,11 +370,11 @@ bool fakeGps::Init() {
   /*---------------------------------------------------*/
 
   // Placeholder tills detta läses in från fil
-  t_KB << 0,0,0;//kameraOffset[0][0], kameraOffset[0][1], kameraOffset[0][2];
+  t_KB << kameraOffset[0][0], kameraOffset[0][1], kameraOffset[0][2];
 
-  R_KB << 1, 0, 0, 0, 1, 0, 0, 0, 1;/*kameraOffset[1][0], kameraOffset[1][1], kameraOffset[1][2], 
+  R_KB << kameraOffset[1][0], kameraOffset[1][1], kameraOffset[1][2], 
           kameraOffset[2][0], kameraOffset[2][1], kameraOffset[2][2], 
-          kameraOffset[3][0], kameraOffset[3][1], kameraOffset[3][2];*/
+          kameraOffset[3][0], kameraOffset[3][1], kameraOffset[3][2];
 
   /*---------------------------------------------------*/
   /*    SLUT PÅ INLÄSNING AV DATA FRÅN KAMERAFILEN    */
@@ -454,10 +438,8 @@ bool fakeGps::Init() {
     /*    SLUT PÅ BERÄKNING AV R_GKs OCH t_GKs     */
     /*---------------------------------------------*/
 
-    //logVector("t_GKs + R_GKs* t_KsK",t_GKs + R_GKs * t_KsK);
-    //logVector("t_GA - R_GA * R_AB * t_BA",t_GA - R_GA * R_AB * t_BA);
-    logMatrix("R_GKs", R_GKs);
-    //logVector("t_GKs + R_GKs * t_KsK",t_GKs + R_GKs * t_KsK,1);
+    logVector("t_GKs + R_GKs * t_KsK",t_GKs + R_GKs * t_KsK);
+    logVector("t_GA - R_GA * R_AB * t_BA",t_GA - R_GA * R_AB * t_BA);    
 
     PublishOdometry(t);
     PublishCorrimu(t);
@@ -467,7 +449,7 @@ bool fakeGps::Init() {
   return true;
 }
 
-bool fakeGps::Proc(const std::shared_ptr<Driver> &msg0,
+bool visualOdometry::Proc(const std::shared_ptr<Driver> &msg0,
                    const std::shared_ptr<Driver> &msg1) {
   AINFO << "Start common component Proc [" << msg0->msg_id() << "] ["
         << msg1->msg_id() << "]";

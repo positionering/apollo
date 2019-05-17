@@ -1,0 +1,7 @@
+<cyber>
+    <module>
+        <name>wheelOdometry</name>
+        <dag_conf>/apollo/modules/drivers/wheelOdometry/dag/common.dag</dag_conf>
+        <process_name>wheelOdometry</process_name>
+    </module>
+</cyber>

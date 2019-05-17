@@ -1,0 +1,7 @@
+<cyber>
+    <module>
+        <name>visualOdometry</name>
+        <dag_conf>/apollo/modules/drivers/visualOdometry/dag/common.dag</dag_conf>
+        <process_name>visualOdometry</process_name>
+    </module>
+</cyber>

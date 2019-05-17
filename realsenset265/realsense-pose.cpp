@@ -109,7 +109,9 @@ int main(int argc, char * argv[]) try {
        if(calibrationFile.fail()){
         calibrationFile.close();
         calibrationFile.open("../forward_calib.json");
-        } else {
+        } 
+        
+        if(calibrationFile.fail()) {
           std::cout << "kunde inte hitta json filen" << std::endl;
           return 0;
         }
@@ -179,11 +181,11 @@ int main(int argc, char * argv[]) try {
               
             rs2_vector accel_data = accel_f.get_motion_data();
             algo.process_accel(accel_data);
-          if(strcmp(argv[1],"1") == 0){
-	        do{
-	            temp = s.sread();
-	        } while(temp.size()< 9);
-	       }
+  //        if(strcmp(argv[1],"1") == 0){
+	//        do{
+	//            temp = s.sread();
+	//        } while(temp.size()< 9);
+	//       }
 		 
 		   //  double thetaGrejFromCos = acos(pose_data.velocity.x / (abs(pose_data.velocity.x)+abs(pose_data.velocity.z)));
 		   //  double thetaGrejFromSin = asin(pose_data.velocity.z / (abs(pose_data.velocity.x)+abs(pose_data.velocity.z)));
@@ -201,8 +203,9 @@ int main(int argc, char * argv[]) try {
 		    
 		   // std::cout << (theta - (PI/2)-PI)*(180/PI) << std::endl; 
 		    
-	      	//std::this_thread::sleep_for(std::chrono::milliseconds(100));	
-	        std::cout << temp << std::endl;
+	      	std::this_thread::sleep_for(std::chrono::milliseconds(100));	
+ /*
+ 	        std::cout << temp << std::endl;
 	        //std::cout << temp.size() << std::endl;
 	        if(temp.size() > 9){
             //std::cout << "Hastighet " << temp << std::endl;
@@ -243,7 +246,7 @@ int main(int argc, char * argv[]) try {
                 bool b1 = wheel_odom_snr.send_wheel_odometry(0, fp.get_frame_number(), sp1);
                 bool b2 = wheel_odom_snr.send_wheel_odometry(1, fp.get_frame_number(), sp2);
             }
-            
+        */      
             if(strcmp(argv[2],"1") == 0){
                 auto now = std::chrono::system_clock::now().time_since_epoch();
                 double now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now).count();
@@ -263,26 +266,16 @@ int main(int argc, char * argv[]) try {
         //                                                                      << "   sin,z: " << cos(euler(1)) << " " << pose_data.velocity.z << std::endl;
 
             
-           // std::cout << std::setprecision(3) << std::fixed << theta*(180/PI) << "   cos,x: " << cos(theta) << " " << pose_data.velocity.x 
-           //                                                                   << "   sin,z: " << sin(theta) << " " << pose_data.velocity.z << std::endl;
- 
-           
-            std::cout   << std::setprecision(3) << std::fixed << 
-                    "tid: " << ms.count() <<
-                    " Pose: "  << pose_data.translation.x << " " << pose_data.translation.y << " " << pose_data.translation.z << 
-                    " Vinkel: " << theta*(180/PI) << 
-                    " confidence " << pose_data.tracker_confidence <<
-                    "     Sp1: " << sp1 <<
-                    "  T265 sp: " << pose_data.velocity << " " << count1 << " " << count2 << 
-                    "     Sp2: " << sp2  << std::endl;
+            std::cout << std::setprecision(3) << std::fixed << theta*(180/PI) << "   x: " << pose_data.translation.x << "   y: " << pose_data.translation.y 
+                                                                              << "  z: " << pose_data.translation.z << std::endl;
                     
             
             
             fd = open(myfifo.c_str(), O_WRONLY/* | O_NONBLOCK*/ );
             
             writePipe = (fToString(pose_data.translation.x) + " " + fToString(pose_data.translation.y) + " " 
-	             + fToString(pose_data.translation.z) + " " + fToString(get_theta().x) + " " + 
-                 fToString(get_theta().y) + " " + fToString(get_theta().z) + " " + 
+	             + fToString(pose_data.translation.z) + " " + fToString(algo.get_theta().x) + " " + 
+                 fToString(algo.get_theta().y) + " " + fToString(algo.get_theta().z) + " " + 
                  fToString((speed1+speed2)/2.0) + " " + fToString(accel_data.x) + " " + fToString(accel_data.z));
 	
 	//writePipe = fToString(pose_data.translation.x) + " " + fToString(pose_data.translation.z);

@@ -1,0 +1,16 @@
+# Define all coms in DAG streaming.
+    module_config {
+    module_library : "/apollo/bazel-bin/modules/drivers/wheelOdometry/lib_wheel_odometry.so"
+    components {
+        class_name : "wheelOdometry"
+        config {
+            name : "wheelOdometry"
+            readers {
+                channel: "/apollo/prediction"
+            }
+            readers {
+                channel: "/apollo/test"
+            }
+        }
+      }
+    }

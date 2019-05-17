@@ -19,8 +19,8 @@
 
 #include "modules/common/adapters/adapter_gflags.h"
 #include "modules/drivers/apriltags/proto/aprilTags.pb.h"
-#include "modules/drivers/fakeGps/fake_gps.h"
-#include "modules/drivers/fakeGps/proto/fakeGps.pb.h"
+#include "modules/drivers/wheelOdometry/wheel_odometry.h"
+#include "modules/drivers/wheelOdometry/proto/wheelOdometry.pb.h"
 #include "modules/drivers/gnss/proto/gnss_best_pose.pb.h"
 #include "modules/drivers/gnss/proto/gnss_raw_observation.pb.h"
 #include "modules/drivers/gnss/proto/heading.pb.h"
@@ -66,7 +66,7 @@ using apollo::cyber::Time;
 using apollo::drivers::gnss::Ins;
 using apollo::localization::CorrectedImu;
 using apollo::localization::Gps;
-using apollo::modules::drivers::fakeGps::proto::Chatter;
+using apollo::modules::drivers::wheelOdometry::proto::Chatter;
 
 using MessagePtr = ::google::protobuf::Message *;
 
@@ -352,18 +352,18 @@ void aprilCallBack(
 /*-----------------------------------------------*/
 
 
-bool fakeGps::Init() {
+bool wheelOdometry::Init() {
 
   //auto ms = std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch());
 
   AERROR << "Commontest component init";
   
-  std::string logPath =  "/apollo/modules/drivers/fakeGps/logs/" + currentDateTime() + ".log";
+  std::string logPath =  "/apollo/modules/drivers/wheelOdometry/logs/" + currentDateTime() + ".log";
   
   freopen(logPath.c_str(), "w", stdout);
   
-  tags = initFile("/apollo/modules/drivers/fakeGps/txtSaker/tags.txt"); 
-  kameraOffset = initFile("/apollo/modules/drivers/fakeGps/txtSaker/kameraOffset.txt");
+  tags = initFile("/apollo/modules/drivers/wheelOdometry/txtSaker/tags.txt"); 
+  kameraOffset = initFile("/apollo/modules/drivers/wheelOdometry/txtSaker/kameraOffset.txt");
   
   
   auto talker = talker_node->CreateWriter<Chatter>("channel/chatter");
@@ -467,7 +467,7 @@ bool fakeGps::Init() {
   return true;
 }
 
-bool fakeGps::Proc(const std::shared_ptr<Driver> &msg0,
+bool wheelOdometry::Proc(const std::shared_ptr<Driver> &msg0,
                    const std::shared_ptr<Driver> &msg1) {
   AINFO << "Start common component Proc [" << msg0->msg_id() << "] ["
         << msg1->msg_id() << "]";
