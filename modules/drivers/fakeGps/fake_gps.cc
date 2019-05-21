@@ -140,15 +140,7 @@ void anglesFromRot2(Cord &c) {
   c.angles << roll, pitch, yaw;
 }
 
-void logMatrix(std::string s, std::vector<std::vector<double>> l) {
-  AERROR << "******************";
-  AERROR << s;
-  for (int i = 0; i < 3; i++) {
-    AERROR << l[i][0] << " " << l[i][1] << " " << l[i][2];
-  }
-}
-
-void logMatrix(std::string s, Eigen::Matrix3d l) {
+void printMatrix(std::string s, Eigen::Matrix3d l) {
   AERROR << "******************";
   AERROR << s;
   for (int i = 0; i < 3; i++) {
@@ -156,27 +148,21 @@ void logMatrix(std::string s, Eigen::Matrix3d l) {
   }
 }
 
-void logMatrix(std::string s, Eigen::Matrix3d l, int t) {
-  std::cout << "******************" << std::endl;
+void logMatrix(std::string s, Eigen::Matrix3d l) {
   std::cout << s << std::endl;
   for (int i = 0; i < 3; i++) {
-    std::cout << std::fixed << std::setprecision(3) << l(i, 0) << " " << l(i, 1) << " " << l(i, 2) << std::endl;
+    std::cout << l(i, 0) << " " << l(i, 1) << " " << l(i, 2) << std::endl;
   }
 }
 
-
-void logVector(std::string s, std::vector<double> l) {
-  AERROR << "---------------------------";
-  AERROR << s << " " << l[0] << " " << l[1] << " " << l[2];
-}
-
-void logVector(std::string s, Eigen::Vector3d l) {
+void printVector(std::string s, Eigen::Vector3d l) {
   AERROR << "---------------------------";
   AERROR << std::fixed << std::setprecision(3) << s << " " << l(0) << " " << l(1) << " " << l(2);
 }
 
-void logVector(std::string s, Eigen::Vector3d l, int t) {
+void logVector(std::string s, Eigen::Vector3d l) {
   auto ms = std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch());
+  std::cout << s << std::endl;
   std::cout << ms.count() <<" " << l[0] << " " << l[1] << " " << l[2] << std::endl;
 }
 

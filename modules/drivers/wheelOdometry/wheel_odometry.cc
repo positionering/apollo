@@ -20,6 +20,7 @@
 #include "modules/common/adapters/adapter_gflags.h"
 #include "modules/drivers/apriltags/proto/aprilTags.pb.h"
 #include "modules/drivers/wheelOdometry/wheel_odometry.h"
+#include "modules/drivers/wheelOdometry/cArduino.h"
 #include "modules/drivers/wheelOdometry/proto/wheelOdometry.pb.h"
 #include "modules/drivers/gnss/proto/gnss_best_pose.pb.h"
 #include "modules/drivers/gnss/proto/gnss_raw_observation.pb.h"
@@ -27,7 +28,6 @@
 #include "modules/drivers/gnss/proto/ins.pb.h"
 #include "modules/localization/proto/gps.pb.h"
 #include "modules/localization/proto/imu.pb.h"
-#include <chrono>
 
 /**
  * ----------------------------------------------------
@@ -110,6 +110,12 @@ Cord aprilToD435;
 Eigen::Matrix3d R_GA, R_AB, R_KB, R_KsK, R_GKs;
 Eigen::Vector3d t_GA, t_BA, t_KB, t_KsK, t_GKs;
 
+Eigen::Vector3d t_wo(0,0,0);
+Eigen::Vector3d t_wo_cam;
+int wo_tick_l, wo_tick_r, wo_tick_l_old, wo_tick_r_old;
+double wo_speed_1, wo_speed_2;
+double theta = 0;
+
 /*-----------------------------------------------*/
 /*  END OF SECTION FOR DEFINISION OF VARIABLES  */
 /*-----------------------------------------------*/
@@ -140,15 +146,7 @@ void anglesFromRot2(Cord &c) {
   c.angles << roll, pitch, yaw;
 }
 
-void logMatrix(std::string s, std::vector<std::vector<double>> l) {
-  AERROR << "******************";
-  AERROR << s;
-  for (int i = 0; i < 3; i++) {
-    AERROR << l[i][0] << " " << l[i][1] << " " << l[i][2];
-  }
-}
-
-void logMatrix(std::string s, Eigen::Matrix3d l) {
+void printMatrix(std::string s, Eigen::Matrix3d l) {
   AERROR << "******************";
   AERROR << s;
   for (int i = 0; i < 3; i++) {
@@ -156,29 +154,29 @@ void logMatrix(std::string s, Eigen::Matrix3d l) {
   }
 }
 
-void logMatrix(std::string s, Eigen::Matrix3d l, int t) {
-  std::cout << "******************" << std::endl;
+void logMatrix(std::string s, Eigen::Matrix3d l) {
   std::cout << s << std::endl;
   for (int i = 0; i < 3; i++) {
-    std::cout << std::fixed << std::setprecision(3) << l(i, 0) << " " << l(i, 1) << " " << l(i, 2) << std::endl;
+    std::cout << l(i, 0) << " " << l(i, 1) << " " << l(i, 2) << std::endl;
   }
 }
 
-
-void logVector(std::string s, std::vector<double> l) {
-  AERROR << "---------------------------";
-  AERROR << s << " " << l[0] << " " << l[1] << " " << l[2];
-}
-
-void logVector(std::string s, Eigen::Vector3d l) {
+void printVector(std::string s, Eigen::Vector3d l) {
   AERROR << "---------------------------";
   AERROR << std::fixed << std::setprecision(3) << s << " " << l(0) << " " << l(1) << " " << l(2);
 }
 
-void logVector(std::string s, Eigen::Vector3d l, int t) {
-  auto ms = std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch());
-  std::cout << ms.count() <<" " << l[0] << " " << l[1] << " " << l[2] << std::endl;
+void logVector(std::string s, Eigen::Vector3d l) {
+  std::cout << s << std::endl;
+  std::cout << l[0] << " " << l[1] << " " << l[2] << std::endl;
 }
+
+void logTime(){
+  auto ms = std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch());
+    std::cout << "Time" << std::endl;
+    std::cout << ms.count() << std::endl;
+}
+
 
 void PublishOdometry(Cord p /*const MessagePtr message*/) {
   // Ins *ins = As<Ins>(message);
@@ -198,7 +196,9 @@ void PublishOdometry(Cord p /*const MessagePtr message*/) {
   gps_msg->mutable_position()->set_x(1);
   gps_msg->mutable_position()->set_y(1);
   gps_msg->mutable_position()->set_z(1);
-
+  
+  
+  
   // logVector(p);
 
   // 2. orientation
@@ -351,16 +351,22 @@ void aprilCallBack(
 /*    SLUT PÅ INLÄSNING AV DATA FRÅN APRILTAG    */
 /*-----------------------------------------------*/
 
+std::string dToString(double f){
+
+    std::ostringstream strs;
+	strs << std::setprecision(10) << std::fixed << f;
+	return strs.str();
+
+}
 
 bool wheelOdometry::Init() {
-
-  //auto ms = std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch());
-
   AERROR << "Commontest component init";
   
   std::string logPath =  "/apollo/modules/drivers/wheelOdometry/logs/" + currentDateTime() + ".log";
   
   freopen(logPath.c_str(), "w", stdout);
+  
+  // std::cout << "awdqwd" << std::endl;
   
   tags = initFile("/apollo/modules/drivers/wheelOdometry/txtSaker/tags.txt"); 
   kameraOffset = initFile("/apollo/modules/drivers/wheelOdometry/txtSaker/kameraOffset.txt");
@@ -374,54 +380,62 @@ bool wheelOdometry::Init() {
           ->CreateReader<apollo::modules::drivers::apriltags::proto::apriltags>(
               "channel/apriltags", aprilCallBack);
 
-  int MAX_BUF = 128;
-  int fd;
-  std::string myfifo = "/tmp/myfifo";
-  char buf[MAX_BUF];
-
+  
   Cord t;
 
+  /*---------------------------------------------------*/
+  /*    START PÅ initiering av arduino                 */
+  /*---------------------------------------------------*/  
+  
+
+  //initierings delen, ovanför loopen  
+  
+  serial s;
+  std::string temp = "";
+  s.init("/dev/ttyACM0");
+  std::size_t az,az1,az2;
+	
+
+  /*---------------------------------------------------*/
+  /*    SLUT PÅ initiering av arduino                 */
+  /*---------------------------------------------------*/
+  
+  
+  /*--------------------------------------------------*/
+  /*    init pipe för att skicka till andra gruppen   */
+  /*--------------------------------------------------*/
+  
+  
+   int fd2fifo;
+   std::string grupp2fifo = "/tmp/posdata";
+   mkfifo(grupp2fifo.c_str(), 0666);
+    
+   std::string writePipe = "0.000000000 0.000000000 0.00";
+	
+  
+  /*-------------------------------------------------*/
+  /*    slut på pipe initiering                     */
+  /*-----------------------------------------------*/
+  
+  
+  
   /*---------------------------------------------------*/
   /*    START PÅ INLÄSNING AV DATA FRÅN KAMERAFILEN    */
   /*---------------------------------------------------*/
 
   // Placeholder tills detta läses in från fil
-  t_KB << 0,0,0;//kameraOffset[0][0], kameraOffset[0][1], kameraOffset[0][2];
+  t_KB << kameraOffset[0][0], kameraOffset[0][1], kameraOffset[0][2];
 
-  R_KB << 1, 0, 0, 0, 1, 0, 0, 0, 1;/*kameraOffset[1][0], kameraOffset[1][1], kameraOffset[1][2], 
+  R_KB << kameraOffset[1][0], kameraOffset[1][1], kameraOffset[1][2], 
           kameraOffset[2][0], kameraOffset[2][1], kameraOffset[2][2], 
-          kameraOffset[3][0], kameraOffset[3][1], kameraOffset[3][2];*/
+          kameraOffset[3][0], kameraOffset[3][1], kameraOffset[3][2];
 
   /*---------------------------------------------------*/
   /*    SLUT PÅ INLÄSNING AV DATA FRÅN KAMERAFILEN    */
   /*---------------------------------------------------*/
-
   while (apollo::cyber::OK()) {
-    fd = open(myfifo.c_str(), O_RDONLY /* | O_NONBLOCK */);
-    read(fd, buf, MAX_BUF);
-    close(fd);
-    std::string bufS(buf);
-    std::size_t sz1, sz2, sz3, sz4, sz5, sz6;  //, sz7, sz8;
-
-    /*---------------------------------------------------*/
-    /*    START PÅ INLÄSNING AV DATA FRÅN T265 KAMERAN   */
-    /*---------------------------------------------------*/
-
-    t_KsK(0) = std::stod(bufS, &sz1);
-    t_KsK(2) = std::stod(bufS.substr(sz1), &sz2);
-    t_KsK(1) = -std::stod(bufS.substr(sz1 + sz2), &sz3);
-
-    double roll = -std::stod(bufS.substr(sz1 + sz2 + sz3), &sz4);  // pitch
-    double yaw = M_PI - std::stod(bufS.substr(sz1 + sz2 + sz3 + sz4), &sz5);  // yaw
-    double pitch = M_PI_2 - std::stod(bufS.substr(sz1 + sz2 + sz3 + sz4 + sz5), &sz6);  // roll
-
-    R_KsK = rotFromAngles(yaw, pitch, roll);
-
-
-    /*--------------------------------------------------*/
-    /*    SLUT PÅ INLÄSNING AV DATA FRÅN T265 KAMERAN   */
-    /*--------------------------------------------------*/
-
+  
+   fd2fifo = open(grupp2fifo.c_str(), O_WRONLY);
     /*----------------------------------------------------*/
     /*    START PÅ INLÄSNING AV DATA FRÅN APRILTAGFILEN   */
     /*----------------------------------------------------*/
@@ -454,15 +468,104 @@ bool wheelOdometry::Init() {
     /*    SLUT PÅ BERÄKNING AV R_GKs OCH t_GKs     */
     /*---------------------------------------------*/
 
-    //logVector("t_GKs + R_GKs* t_KsK",t_GKs + R_GKs * t_KsK);
-    //logVector("t_GA - R_GA * R_AB * t_BA",t_GA - R_GA * R_AB * t_BA);
-    logMatrix("R_GKs", R_GKs);
-    //logVector("t_GKs + R_GKs * t_KsK",t_GKs + R_GKs * t_KsK,1);
+
+    /*-------------------------------------------------------*/
+    /*    START PÅ BERÄKNING AV POSSITION MED HJULODOMETRI   */
+    /*-------------------------------------------------------*/
+
+      do{
+        temp = s.sread();
+      } while(temp.size()< 9);
+      
+      AERROR << temp;
+      
+      try{
+        wo_speed_1 = std::stod (temp,&az);
+        wo_speed_2 = std::stod (temp.substr(az),&az1);
+                    
+        wo_tick_l = std::stod (temp.substr(az+az1),&az2);
+        wo_tick_r = std::stod (temp.substr(az+az1+az2));
+      } catch(const std::exception& e){
+        wo_speed_1 = 0;
+        wo_speed_2 = 0;
+        wo_tick_l = 0;
+        wo_tick_r = 0;
+        AERROR<< "catches";
+      }
+        int diff_l = wo_tick_l - wo_tick_l_old;
+        int diff_r = wo_tick_r - wo_tick_r_old;
+        wo_tick_l_old = wo_tick_l;
+        wo_tick_r_old = wo_tick_r;
+
+        if(diff_l > 5 || diff_l < 0){
+          diff_l = 0;
+        }
+        if(diff_r > 5 || diff_r < 0){
+          diff_r = 0;
+        }
+
+        AERROR << "diff_l: " << diff_l;
+        AERROR << "diff_r: " << diff_r;
+
+        double alfa = atan2(diff_l - diff_r, 2*1.08/(0.55*M_PI/29));
+        theta = theta - 2*alfa;
+
+        double dist = (0.55*M_PI/29) * (diff_l + diff_r)/2; 
+
+
+        Eigen::Vector3d step(dist*cos(theta), dist*sin(theta), 0);
+      //AERROR<< "hit?";
+
+        t_wo = t_wo + step;
+        Eigen::Vector3d t_cam_wo(0.9*cos(theta), 0.9*sin(theta), 0);
+        t_wo_cam = t_wo + t_cam_wo;
+
+    /*-------------------------------------------------------*/
+    /*     SLUT PÅ BERÄKNING AV POSSITION MED HJULODOMETRI   */
+    /*-------------------------------------------------------*/
+
+    /*---------------------------------------------------------*/
+    /*    START PÅ KALIBRERING AV POSSITION MED HJULODOMETRI   */
+    /*---------------------------------------------------------*/
+    
+    if(detec){
+      t_wo = t_GA - R_GA * R_AB * t_BA;
+      Eigen::Vector3d y_unit(0,1,0);
+      Eigen::Vector3d fram = R_GA * R_AB * fram;
+      theta = acos(y_unit.dot(fram));
+      theta = ((y_unit.cross(fram))(2) > 0)? theta:-theta;
+
+    }
+
+    /*---------------------------------------------------------*/
+    /*    START PÅ KALIBRERING AV POSSITION MED HJULODOMETRI   */
+    /*---------------------------------------------------------*/
+
+    logVector("t_GA - R_GA * R_AB * t_BA",t_GA - R_GA * R_AB * t_BA);
+    logVector("t_wo + cam_pos",t_wo_cam);
+    logTime();
+    std::cout << "Theta" << std::endl;
+    std::cout << theta << std::endl;
+
+    printVector("t_GA - R_GA * R_AB * t_BA",t_GA - R_GA * R_AB * t_BA);
+    printVector("t_wo + cam_pos",t_wo_cam);
+    AERROR << "''''''''''''''''";
+    AERROR << "Theta: " << theta;
+
+
 
     PublishOdometry(t);
     PublishCorrimu(t);
 
+     writePipe = dToString(-t_wo_cam(1))+" "+dToString(t_wo_cam(0))+" "+dToString(theta);
+
+	   write(fd2fifo, writePipe.c_str(),writePipe.size());
+	   close(fd2fifo);
+     std::this_thread::sleep_for(std::chrono::milliseconds(5));
   }
+  
+   unlink(grupp2fifo.c_str());
+  
   fclose (stdout);
   return true;
 }
