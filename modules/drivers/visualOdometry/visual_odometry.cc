@@ -330,6 +330,8 @@ void aprilCallBack(
     rot_fix2 << -1, 0, 0, 0, 0, -1, 0, -1, 0;
 
     R_AB = rot_fix1 * R_AB * rot_fix2.transpose();
+    R_AB.transposeInPlace();
+
   }
 
 }
@@ -371,11 +373,16 @@ bool visualOdometry::Init() {
   /*---------------------------------------------------*/
 
   // Placeholder tills detta läses in från fil
-  t_KB << kameraOffset[0][0], kameraOffset[0][1], kameraOffset[0][2];
+  t_KB << 0.2, 0.3, 0;
+  R_KB << 0, 1, 0, 
+          -1, 0, 0, 
+          0, 0, 1;
 
-  R_KB << kameraOffset[1][0], kameraOffset[1][1], kameraOffset[1][2], 
-          kameraOffset[2][0], kameraOffset[2][1], kameraOffset[2][2], 
-          kameraOffset[3][0], kameraOffset[3][1], kameraOffset[3][2];
+  // t_KB << kameraOffset[0][0], kameraOffset[0][1], kameraOffset[0][2];
+
+  // R_KB << kameraOffset[1][0], kameraOffset[1][1], kameraOffset[1][2], 
+  //         kameraOffset[2][0], kameraOffset[2][1], kameraOffset[2][2], 
+  //         kameraOffset[3][0], kameraOffset[3][1], kameraOffset[3][2];
 
   /*---------------------------------------------------*/
   /*    SLUT PÅ INLÄSNING AV DATA FRÅN KAMERAFILEN    */
@@ -439,8 +446,8 @@ bool visualOdometry::Init() {
     /*    SLUT PÅ BERÄKNING AV R_GKs OCH t_GKs     */
     /*---------------------------------------------*/
 
-    logVector("t_GKs + R_GKs * t_KsK",t_GKs + R_GKs * t_KsK);
-    logVector("t_GA - R_GA * R_AB * t_BA",t_GA - R_GA * R_AB * t_BA);    
+    printVector("t_GKs + R_GKs * t_KsK",t_GKs + R_GKs * t_KsK);
+    printVector("t_GA - R_GA * R_AB * t_BA",t_GA - R_GA * R_AB * t_BA);    
 
     PublishOdometry(t);
     PublishCorrimu(t);

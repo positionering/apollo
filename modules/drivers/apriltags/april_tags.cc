@@ -171,10 +171,10 @@ bool aprilTags::Init() {
             z_filt = z * alpha + (1 - alpha) * z_old;
             z_old = z_filt;
           }
-        AERROR << "ERROR is this ---> " << err;
-        AERROR << "X is this ---> " << x;
-        AERROR << "Y is this ---> " << y;
-        AERROR << "Z is this ---> " << z;
+       // AERROR << "ERROR is this ---> " << err;
+        // AERROR << "X is this ---> " << x;
+        // AERROR << "Y is this ---> " << y;
+        // AERROR << "Z is this ---> " << z;
         }
         // AERROR << "Z: " << z << " Z_filt: " << z_filt << " X: " << x
         //        << " X_filt: " << x_filt << " Phi " << phi

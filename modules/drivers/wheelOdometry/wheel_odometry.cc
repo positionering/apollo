@@ -344,7 +344,8 @@ void aprilCallBack(
     rot_fix2 << -1, 0, 0, 0, 0, -1, 0, -1, 0;
 
     R_AB = rot_fix1 * R_AB * rot_fix2.transpose();
-  }
+    R_AB.transposeInPlace();
+    }
 
 }
 /*-----------------------------------------------*/
@@ -360,7 +361,7 @@ std::string dToString(double f){
 }
 
 bool wheelOdometry::Init() {
-  AERROR << "Commontest component init";
+  AERROR << "Wheelodometry component init";
   
   std::string logPath =  "/apollo/modules/drivers/wheelOdometry/logs/" + currentDateTime() + ".log";
   
@@ -392,7 +393,7 @@ bool wheelOdometry::Init() {
   
   serial s;
   std::string temp = "";
-  s.init("/dev/ttyACM0");
+  s.init();
   std::size_t az,az1,az2;
 	
 
@@ -424,18 +425,25 @@ bool wheelOdometry::Init() {
   /*---------------------------------------------------*/
 
   // Placeholder tills detta läses in från fil
-  t_KB << kameraOffset[0][0], kameraOffset[0][1], kameraOffset[0][2];
+      t_KB << 0.2, 0.3, 0;
+      R_KB << 0, 1, 0, 
+             -1, 0, 0, 
+              0, 0, 1;
 
-  R_KB << kameraOffset[1][0], kameraOffset[1][1], kameraOffset[1][2], 
-          kameraOffset[2][0], kameraOffset[2][1], kameraOffset[2][2], 
-          kameraOffset[3][0], kameraOffset[3][1], kameraOffset[3][2];
+  // t_KB << kameraOffset[0][0], kameraOffset[0][1], kameraOffset[0][2];
+
+  // R_KB << kameraOffset[1][0], kameraOffset[1][1], kameraOffset[1][2], 
+  //         kameraOffset[2][0], kameraOffset[2][1], kameraOffset[2][2], 
+  //         kameraOffset[3][0], kameraOffset[3][1], kameraOffset[3][2];
 
   /*---------------------------------------------------*/
   /*    SLUT PÅ INLÄSNING AV DATA FRÅN KAMERAFILEN    */
   /*---------------------------------------------------*/
   while (apollo::cyber::OK()) {
   
-   fd2fifo = open(grupp2fifo.c_str(), O_WRONLY);
+  //  fd2fifo = open(grupp2fifo.c_str(), O_WRONLY); //********************************************************************************************************************
+  
+  
     /*----------------------------------------------------*/
     /*    START PÅ INLÄSNING AV DATA FRÅN APRILTAGFILEN   */
     /*----------------------------------------------------*/
@@ -469,22 +477,50 @@ bool wheelOdometry::Init() {
     /*---------------------------------------------*/
 
 
+    /*---------------------------------------------------------*/
+    /*    START PÅ KALIBRERING AV POSSITION MED HJULODOMETRI   */
+    /*---------------------------------------------------------*/
+    
+    if(detec){
+      AERROR << "KALIBRERAR";	
+      Eigen::Vector3d y_unit(0,1,0);
+      Eigen::Vector3d fram = R_GA * R_AB * R_KB.transpose() * y_unit;
+      // printMatrix("R_GA: ",R_GA);
+      // printMatrix("R_AB: ",R_AB);
+      // printMatrix("R_KB: ",R_KB);
+      // printVector("Fram: ",fram);
+      theta = acos(y_unit.dot(fram));
+      theta = ((y_unit.cross(fram))(2) > 0)? theta:-theta;
+      Eigen::Vector3d t_cam(0.9*cos(theta), 0.9*sin(theta), 0);
+      t_wo = t_GA - R_GA * R_AB * t_BA - t_cam ;
+    }
+
+    /*---------------------------------------------------------*/
+    /*    START PÅ KALIBRERING AV POSSITION MED HJULODOMETRI   */
+    /*---------------------------------------------------------*/
+
+
     /*-------------------------------------------------------*/
     /*    START PÅ BERÄKNING AV POSSITION MED HJULODOMETRI   */
     /*-------------------------------------------------------*/
-
       do{
         temp = s.sread();
+       //AERROR << "Temp: " << temp;
       } while(temp.size()< 9);
       
-      AERROR << temp;
+     // AERROR << temp;
       
       try{
+   
         wo_speed_1 = std::stod (temp,&az);
         wo_speed_2 = std::stod (temp.substr(az),&az1);
                     
         wo_tick_l = std::stod (temp.substr(az+az1),&az2);
         wo_tick_r = std::stod (temp.substr(az+az1+az2));
+           
+       // AERROR << "wo_tick_l: " << wo_tick_l;
+       // AERROR << "wo_tick_r: " << wo_tick_r;
+
       } catch(const std::exception& e){
         wo_speed_1 = 0;
         wo_speed_2 = 0;
@@ -504,8 +540,8 @@ bool wheelOdometry::Init() {
           diff_r = 0;
         }
 
-        AERROR << "diff_l: " << diff_l;
-        AERROR << "diff_r: " << diff_r;
+        // AERROR << "diff_l: " << diff_l;
+        // AERROR << "diff_r: " << diff_r;
 
         double alfa = atan2(diff_l - diff_r, 2*1.08/(0.55*M_PI/29));
         theta = theta - 2*alfa;
@@ -517,51 +553,32 @@ bool wheelOdometry::Init() {
       //AERROR<< "hit?";
 
         t_wo = t_wo + step;
-        Eigen::Vector3d t_cam_wo(0.9*cos(theta), 0.9*sin(theta), 0);
-        t_wo_cam = t_wo + t_cam_wo;
+        Eigen::Vector3d t_cam(0.9*cos(theta), 0.9*sin(theta), 0);
+        t_wo_cam = t_wo + t_cam;
 
     /*-------------------------------------------------------*/
     /*     SLUT PÅ BERÄKNING AV POSSITION MED HJULODOMETRI   */
     /*-------------------------------------------------------*/
 
-    /*---------------------------------------------------------*/
-    /*    START PÅ KALIBRERING AV POSSITION MED HJULODOMETRI   */
-    /*---------------------------------------------------------*/
-    
-    if(detec){
-      t_wo = t_GA - R_GA * R_AB * t_BA;
-      Eigen::Vector3d y_unit(0,1,0);
-      Eigen::Vector3d fram = R_GA * R_AB * fram;
-      theta = acos(y_unit.dot(fram));
-      theta = ((y_unit.cross(fram))(2) > 0)? theta:-theta;
-
-    }
-
-    /*---------------------------------------------------------*/
-    /*    START PÅ KALIBRERING AV POSSITION MED HJULODOMETRI   */
-    /*---------------------------------------------------------*/
-
-    logVector("t_GA - R_GA * R_AB * t_BA",t_GA - R_GA * R_AB * t_BA);
-    logVector("t_wo + cam_pos",t_wo_cam);
+    // logVector("t_GA - R_GA * R_AB * t_BA",t_GA - R_GA * R_AB * t_BA);
+    logVector("t_wo + t_wo_cam",t_wo_cam);
     logTime();
     std::cout << "Theta" << std::endl;
     std::cout << theta << std::endl;
 
-    printVector("t_GA - R_GA * R_AB * t_BA",t_GA - R_GA * R_AB * t_BA);
-    printVector("t_wo + cam_pos",t_wo_cam);
+    // printVector("t_GA - R_GA * R_AB * t_BA",t_GA - R_GA * R_AB * t_BA);
+    printVector("t_wo + t_wo_cam",t_wo_cam);
     AERROR << "''''''''''''''''";
-    AERROR << "Theta: " << theta;
-
-
+    AERROR << "theta: " << theta;
 
     PublishOdometry(t);
     PublishCorrimu(t);
 
-     writePipe = dToString(-t_wo_cam(1))+" "+dToString(t_wo_cam(0))+" "+dToString(theta);
+     writePipe = dToString(-t_wo_cam(1))+" "+dToString(t_wo_cam(0))+" "+dToString(theta) + ",";
+    
 
 	   write(fd2fifo, writePipe.c_str(),writePipe.size());
 	   close(fd2fifo);
-     std::this_thread::sleep_for(std::chrono::milliseconds(5));
   }
   
    unlink(grupp2fifo.c_str());

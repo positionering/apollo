@@ -4,16 +4,51 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <termios.h>
+#include <chrono>
+#include <thread>
 
 #define _POSIX_SOURCE 1
 
 class serial{
 public:
 
+char* findArduino() {
+	char  dir [] = "/dev/serial/by-id/";
 
-void init(std::string dev ){
-    fd = open(dev.c_str(), O_RDWR | O_NOCTTY );
-    if (fd <0) {perror(dev.c_str()); exit(-1); } 
+	DIR *d=opendir(dir);
+
+	if(d == NULL) //Couldn't open directory
+	return 0;
+
+	struct dirent *de=NULL;
+	while(de = readdir(d))
+	{
+		if(strstr(de->d_name,"arduino")!=0)
+		{
+			char s[PATH_MAX+1];
+			sprintf(s,"%s%s",dir,de->d_name);
+
+			char buf[1024];
+			int len;
+			if ((len = readlink(s, buf, sizeof(buf)-1)) != -1)
+			   buf[len] = '\0';
+
+			MODEMDEVICE=new char[PATH_MAX+1];
+			realpath(s, MODEMDEVICE);
+
+			closedir(d);
+			return  MODEMDEVICE;
+		}
+	}
+
+	closedir(d);
+	return 0;
+}
+
+
+void init(){
+    fd = open(findArduino(), O_RDWR | O_NOCTTY );
+    if (fd <0) { exit(-1); } 
     // Improvement No. 1 I save old setting and clean the new one 
     tcgetattr(fd,&oldtio);
     bzero(&newtio, sizeof(newtio));
@@ -29,8 +64,8 @@ void init(std::string dev ){
     newtio.c_cc[VERASE]   = 0;     /* del */
     newtio.c_cc[VKILL]    = 0;     /* @ */
     newtio.c_cc[VEOF]     = 4;     /* Ctrl-d */
-    newtio.c_cc[VTIME]    = 0;     /* inter-character timer unused */
-    newtio.c_cc[VMIN]     = 1;     /* blocking read until 1 character  arrives */
+    newtio.c_cc[VTIME]    = 1;     /* inter-character timer unused */
+    newtio.c_cc[VMIN]     = 0;     /* blocking read until 1 character  arrives */
     newtio.c_cc[VSWTC]    = 0;     /* '\0' */
     newtio.c_cc[VSTART]   = 0;     /* Ctrl-q */
     newtio.c_cc[VSTOP]    = 0;     /* Ctrl-s */
@@ -50,8 +85,14 @@ void init(std::string dev ){
     close(fd);
 }
 
+      void flushArd(){
+       tcflush(fd, TCIFLUSH);
+	//std::this_thread::sleep_for(std::chrono::milliseconds(i));
+      }
     std::string sread(){
-        res = read(fd,buf,255);
+      //  tcflush(fd, TCIFLUSH);
+//	std::this_thread::sleep_for(std::chrono::milliseconds(5));
+	res = read(fd,buf,255);
         buf[res]=0;
         return buf;
     }
@@ -62,4 +103,5 @@ private:
     int fd,c,res;
     struct termios oldtio,newtio;
     char buf[255];
+char *MODEMDEVICE =0;
 };
