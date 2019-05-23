@@ -77,7 +77,7 @@ projPJ wgs84pj_source_ = pj_init_plus(WGS84_TEXT);
 projPJ utm_target_ = pj_init_plus(
     "+proj=utm +zone=32 +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs");
 
-auto talker_node = apollo::cyber::CreateNode("talker");
+auto talker_node = apollo::cyber::CreateNode("WheelodometryTalker");
 
 std::shared_ptr<apollo::cyber::Writer<apollo::localization::Gps>> gps_writer_ =
     talker_node->CreateWriter<Gps>(FLAGS_gps_topic);
@@ -366,15 +366,13 @@ bool wheelOdometry::Init() {
   std::string logPath =  "/apollo/modules/drivers/wheelOdometry/logs/" + currentDateTime() + ".log";
   
   freopen(logPath.c_str(), "w", stdout);
-  
-  // std::cout << "awdqwd" << std::endl;
-  
-  tags = initFile("/apollo/modules/drivers/wheelOdometry/txtSaker/tags.txt"); 
-  kameraOffset = initFile("/apollo/modules/drivers/wheelOdometry/txtSaker/kameraOffset.txt");
+    
+  tags = initFile("/apollo/modules/drivers/apriltags/conf/tagPositions.txt"); 
+  kameraOffset = initFile("/apollo/modules/drivers/camera/conf/kameraOffset.txt");
   
   
-  auto talker = talker_node->CreateWriter<Chatter>("channel/chatter");
-  auto listener_node = apollo::cyber::CreateNode("listener");
+  // auto talker = talker_node->CreateWriter<Chatter>("channel/chatter");
+  auto listener_node = apollo::cyber::CreateNode("WheelodometryListener");
 
   auto listener =
       listener_node
@@ -393,7 +391,9 @@ bool wheelOdometry::Init() {
   
   serial s;
   std::string temp = "";
+  AERROR << "BEGINING ARDUINO INIT";
   s.init();
+  AERROR << "ARDUINO INIT COMPLETED";
   std::size_t az,az1,az2;
 	
 

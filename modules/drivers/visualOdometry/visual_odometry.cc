@@ -76,7 +76,7 @@ projPJ wgs84pj_source_ = pj_init_plus(WGS84_TEXT);
 projPJ utm_target_ = pj_init_plus(
     "+proj=utm +zone=32 +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs");
 
-auto talker_node = apollo::cyber::CreateNode("talker");
+auto talker_node = apollo::cyber::CreateNode("VisualodometryTalker");
 
 std::shared_ptr<apollo::cyber::Writer<apollo::localization::Gps>> gps_writer_ =
     talker_node->CreateWriter<Gps>(FLAGS_gps_topic);
@@ -164,6 +164,12 @@ void logVector(std::string s, Eigen::Vector3d l) {
   auto ms = std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch());
   std::cout << s << std::endl;
   std::cout << ms.count() <<" " << l[0] << " " << l[1] << " " << l[2] << std::endl;
+}
+
+void logTime(){
+  auto ms = std::chrono::duration_cast< std::chrono::milliseconds >(std::chrono::system_clock::now().time_since_epoch());
+    std::cout << "Time" << std::endl;
+    std::cout << ms.count() << std::endl;
 }
 
 void PublishOdometry(Cord p /*const MessagePtr message*/) {
@@ -346,15 +352,12 @@ bool visualOdometry::Init() {
   std::string logPath =  "/apollo/modules/drivers/visualOdometry/logs/" + currentDateTime() + ".log";
   
   freopen(logPath.c_str(), "w", stdout);
+    
+  tags = initFile("/apollo/modules/drivers/apriltags/conf/tagPositions.txt"); 
+  kameraOffset = initFile("/apollo/modules/drivers/camera/conf/kameraOffset.txt");
   
-  std::cout << "awdqwd" << std::endl;
-  
-  tags = initFile("/apollo/modules/drivers/visualOdometry/txtSaker/tags.txt"); 
-  kameraOffset = initFile("/apollo/modules/drivers/visualOdometry/txtSaker/kameraOffset.txt");
-  
-  
-  auto talker = talker_node->CreateWriter<Chatter>("channel/chatter");
-  auto listener_node = apollo::cyber::CreateNode("listener");
+  // auto talker = talker_node->CreateWriter<Chatter>("channel/chatter");
+  auto listener_node = apollo::cyber::CreateNode("VisualodometryListener");
 
   auto listener =
       listener_node
@@ -451,9 +454,11 @@ bool visualOdometry::Init() {
     /*    SLUT PÅ BERÄKNING AV R_GKs OCH t_GKs     */
     /*---------------------------------------------*/
 
-    printVector("t_KsK", t_KsK);
-    printVector("t_GKs + R_GKs * t_KsK",t_GKs + R_GKs * t_KsK);
-    printVector("t_GA - R_GA * R_AB * (t_BA + R_KB.transpose() * t_KB)",t_GA - R_GA * R_AB * (t_BA + R_KB.transpose() * t_KB));    
+    printVector("t_GKs + R_GKs * t_KsK: ",t_GKs + R_GKs * t_KsK);
+    printVector("t_GA - R_GA * R_AB * (t_BA + R_KB.transpose() * t_KB): ",t_GA - R_GA * R_AB * (t_BA + R_KB.transpose() * t_KB));
+    logVector("t_GKs + R_GKs * t_KsK: ",t_GKs + R_GKs * t_KsK);
+    logVector("t_GA - R_GA * R_AB * (t_BA + R_KB.transpose() * t_KB): ",t_GA - R_GA * R_AB * (t_BA + R_KB.transpose() * t_KB));
+    logTime();   
 
     PublishOdometry(t);
     PublishCorrimu(t);
