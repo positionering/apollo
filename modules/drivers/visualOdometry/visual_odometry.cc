@@ -378,10 +378,10 @@ bool visualOdometry::Init() {
           -1, 0, 0, 
           0, 0, 1;
 
-  t_KB << 0, 0, 0;
-  R_KB << 1, 0, 0, 
-          0, 1, 0, 
-          0, 0, 1;
+  // t_KB << 0, 0, 0;
+  // R_KB << 1, 0, 0, 
+  //         0, 1, 0, 
+  //         0, 0, 1;
   // t_KB << kameraOffset[0][0], kameraOffset[0][1], kameraOffset[0][2];
 
   // R_KB << kameraOffset[1][0], kameraOffset[1][1], kameraOffset[1][2], 
