@@ -425,7 +425,7 @@ bool wheelOdometry::Init() {
   /*---------------------------------------------------*/
 
   // Placeholder tills detta läses in från fil
-      t_KB << 0.2, 0.3, 0;
+      t_KB << 0.3, -0.2, 0;
       R_KB << 0, 1, 0, 
              -1, 0, 0, 
               0, 0, 1;
@@ -491,8 +491,10 @@ bool wheelOdometry::Init() {
       // printVector("Fram: ",fram);
       theta = acos(y_unit.dot(fram));
       theta = ((y_unit.cross(fram))(2) > 0)? theta:-theta;
-      Eigen::Vector3d t_cam(0.9*cos(theta), 0.9*sin(theta), 0);
-      t_wo = t_GA - R_GA * R_AB * t_BA - t_cam ;
+      // Eigen::Vector3d t_cam(0.9*cos(theta), 0.9*sin(theta), 0);
+      // t_wo = t_GA - R_GA * R_AB * t_BA - t_cam;
+      Eigen::Vector3d t_cam(0, 0.9, 0);
+      t_wo = t_GA - R_GA * R_AB * (t_BA + R_KB.transpose() * (t_KB + t_cam));
     }
 
     /*---------------------------------------------------------*/

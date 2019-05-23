@@ -192,10 +192,10 @@ void PublishOdometry(Cord p /*const MessagePtr message*/) {
   Eigen::AngleAxisd(ins->euler_T265AngleToTwizy().z() - 90 * DEG_TO_RAD_LOCAL,
                         Eigen::Vector3d::UnitZ()) *
   Eigen::AngleAxisd(-ins->euler_T265AngleToTwizy().y(),
-  Eigen::Vector3d::UnitX()) *
-  Eigen::AngleAxisd(ins->euler_T265AngleToTwizy().x(),
-  Eigen::Vector3d::UnitY());
-*/
+  t_GKs + R_GKs * 
+  t_GKs + R_GKs * .x(),
+  t_GKs + R_GKs * 
+  t_GKs + R_GKs * */
   gps_msg->mutable_orientation()->set_qx(1 /*q.x()*/);
   gps_msg->mutable_orientation()->set_qy(2 /*q.y()*/);
   gps_msg->mutable_orientation()->set_qz(3 /*q.z()*/);
@@ -282,7 +282,7 @@ std::vector< std::vector<double>> initFile(std::string p) {
 
 Eigen::Matrix3d ekv6(Eigen::Matrix3d R_GA, Eigen::Matrix3d R_AB, Eigen::Matrix3d R_KB, Eigen::Matrix3d R_KsK) {
   Eigen::Matrix3d rot;
-  rot = R_GA * R_AB * R_KB.transpose() * R_KsK.transpose() ;
+  rot = R_GA * R_AB * R_KB.transpose() * R_KsK.transpose();
   return rot;
 }
  
@@ -373,11 +373,15 @@ bool visualOdometry::Init() {
   /*---------------------------------------------------*/
 
   // Placeholder tills detta läses in från fil
-  t_KB << 0.2, 0.3, 0;
+  t_KB << 0.3, -0.2, 0;
   R_KB << 0, 1, 0, 
           -1, 0, 0, 
           0, 0, 1;
 
+  t_KB << 0, 0, 0;
+  R_KB << 1, 0, 0, 
+          0, 1, 0, 
+          0, 0, 1;
   // t_KB << kameraOffset[0][0], kameraOffset[0][1], kameraOffset[0][2];
 
   // R_KB << kameraOffset[1][0], kameraOffset[1][1], kameraOffset[1][2], 
@@ -436,6 +440,7 @@ bool visualOdometry::Init() {
     /*---------------------------------------------*/
 
     if (detec) {
+      AERROR << "KALIBRERAR";
       R_GKs = ekv6(R_GA, R_AB, R_KB, R_KsK);
 
       t_GKs = ekv8(t_GA, t_BA, t_KB, t_KsK,
@@ -446,8 +451,9 @@ bool visualOdometry::Init() {
     /*    SLUT PÅ BERÄKNING AV R_GKs OCH t_GKs     */
     /*---------------------------------------------*/
 
+    printVector("t_KsK", t_KsK);
     printVector("t_GKs + R_GKs * t_KsK",t_GKs + R_GKs * t_KsK);
-    printVector("t_GA - R_GA * R_AB * t_BA",t_GA - R_GA * R_AB * t_BA);    
+    printVector("t_GA - R_GA * R_AB * (t_BA + R_KB.transpose() * t_KB)",t_GA - R_GA * R_AB * (t_BA + R_KB.transpose() * t_KB));    
 
     PublishOdometry(t);
     PublishCorrimu(t);
