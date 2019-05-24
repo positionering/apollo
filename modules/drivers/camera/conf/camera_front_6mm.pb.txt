@@ -1,4 +1,4 @@
-camera_dev: "/dev/video0"
+camera_dev: "/dev/camera/test"
 frame_id: "camera_front_6mm"
 pixel_format: "yuyv"
 io_method: IO_METHOD_MMAP

@@ -265,27 +265,20 @@ const std::string currentDateTime() {
 
 std::vector< std::vector<double>> initFile(std::string p) {
   std::ifstream file(p);
+  std::string line;
 
   std::vector< std::vector<double>> tempsak;
-  
-  int sz = 1 + std::count(std::istreambuf_iterator<char>(file),
-                          std::istreambuf_iterator<char>(), '\n');
 
-  file.clear();
-  file.seekg(0, std::ios::beg);
+  while( getline(file, line) ) {
 
-  if (file.is_open()) {
-    double dubletas;
-    for (int i = 0; i < sz; i++) {
-      std::vector<double> temp;
-      for (int i = 0; i < 4; i++) {
-        file >> dubletas;
-        temp.push_back(dubletas);
-      }
-      tempsak.push_back(temp);
+        std::stringstream ls( line );
+        std::string word;
+        std::vector<double> temp;
+        while(ls >> word){
+            temp.push_back(std::stod(word));
+        }
+        tempsak.push_back(temp);
     }
-  }
-  
   return tempsak;
 }
 
@@ -417,32 +410,37 @@ bool wheelOdometry::Init() {
   /*-------------------------------------------------*/
   /*    slut på pipe initiering                     */
   /*-----------------------------------------------*/
-  
-  
+  /*
+   int fdTillPlot;
+   std::string plotFifo = "/tmp/plot";
+   mkfifo(plotFifo.c_str(), 0666);
+    
+   std::string plotFifoString = "0.000000000 0.000000000 0.00";
+*/
   
   /*---------------------------------------------------*/
   /*    START PÅ INLÄSNING AV DATA FRÅN KAMERAFILEN    */
   /*---------------------------------------------------*/
 
   // Placeholder tills detta läses in från fil
-      t_KB << 0.3, -0.2, 0;
-      R_KB << 0, 1, 0, 
-             -1, 0, 0, 
-              0, 0, 1;
+  //    t_KB << 0.3, -0.2, 0;
+  //    R_KB << 0, 1, 0, 
+  //           -1, 0, 0, 
+  //            0, 0, 1;
 
-  // t_KB << kameraOffset[0][0], kameraOffset[0][1], kameraOffset[0][2];
+   t_KB << kameraOffset[0][0], kameraOffset[0][1], kameraOffset[0][2];
 
-  // R_KB << kameraOffset[1][0], kameraOffset[1][1], kameraOffset[1][2], 
-  //         kameraOffset[2][0], kameraOffset[2][1], kameraOffset[2][2], 
-  //         kameraOffset[3][0], kameraOffset[3][1], kameraOffset[3][2];
+   R_KB << kameraOffset[1][0], kameraOffset[1][1], kameraOffset[1][2], 
+           kameraOffset[2][0], kameraOffset[2][1], kameraOffset[2][2], 
+           kameraOffset[3][0], kameraOffset[3][1], kameraOffset[3][2];
 
   /*---------------------------------------------------*/
   /*    SLUT PÅ INLÄSNING AV DATA FRÅN KAMERAFILEN    */
   /*---------------------------------------------------*/
   while (apollo::cyber::OK()) {
   
-  //  fd2fifo = open(grupp2fifo.c_str(), O_WRONLY); //********************************************************************************************************************
-  
+    fd2fifo = open(grupp2fifo.c_str(), O_WRONLY);
+  //  fdTillPlot = open(plotFifo.c_str(), O_WRONLY);
   
     /*----------------------------------------------------*/
     /*    START PÅ INLÄSNING AV DATA FRÅN APRILTAGFILEN   */
@@ -577,14 +575,17 @@ bool wheelOdometry::Init() {
     PublishCorrimu(t);
 
      writePipe = dToString(-t_wo_cam(1))+" "+dToString(t_wo_cam(0))+" "+dToString(theta) + ",";
-    
-
 	   write(fd2fifo, writePipe.c_str(),writePipe.size());
 	   close(fd2fifo);
+
+  //  plotFifoString = dToString(-t_wo_cam(1))+" "+dToString(t_wo_cam(0))+" "+dToString(theta) + ",";
+	//   write(fdTillPlot, plotFifoString.c_str(),plotFifoString.size());
+	 //  close(fdTillPlot);
   }
   
    unlink(grupp2fifo.c_str());
   
+  //unlink(plotFifo.c_str());
   fclose (stdout);
   return true;
 }
