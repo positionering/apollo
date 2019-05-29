@@ -346,6 +346,15 @@ void aprilCallBack(
 /*-----------------------------------------------*/
 
 
+std::string dToString(double f){
+
+    std::ostringstream strs;
+	strs << std::setprecision(10) << std::fixed << f;
+	return strs.str();
+
+}
+
+
 bool visualOdometry::Init() {
   AERROR << "Commontest component init";
   
@@ -368,6 +377,17 @@ bool visualOdometry::Init() {
   int fd;
   std::string myfifo = "/tmp/myfifo";
   char buf[MAX_BUF];
+
+
+
+   int fdTillPlot;
+   std::string plotFifo = "/tmp/vis";
+   mkfifo(plotFifo.c_str(), 0666);
+    
+   std::string plotFifoString = "0.000000000 0.000000000 0.00";
+
+
+
 
   Cord t;
 
@@ -396,6 +416,7 @@ bool visualOdometry::Init() {
   /*---------------------------------------------------*/
 
   while (apollo::cyber::OK()) {
+    fdTillPlot = open(plotFifo.c_str(), O_WRONLY);
     fd = open(myfifo.c_str(), O_RDONLY /* | O_NONBLOCK */);
     read(fd, buf, MAX_BUF);
     close(fd);
@@ -462,8 +483,13 @@ bool visualOdometry::Init() {
 
     PublishOdometry(t);
     PublishCorrimu(t);
+    plotFifoString = dToString((t_GKs + R_GKs * t_KsK)(0))+" "+dToString((t_GKs + R_GKs * t_KsK)(1))+",";
+	   write(fdTillPlot, plotFifoString.c_str(),plotFifoString.size());
+	   close(fdTillPlot);
 
   }
+  
+  unlink(plotFifo.c_str());
   fclose (stdout);
   return true;
 }

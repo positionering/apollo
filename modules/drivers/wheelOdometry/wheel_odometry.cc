@@ -410,13 +410,13 @@ bool wheelOdometry::Init() {
   /*-------------------------------------------------*/
   /*    slut på pipe initiering                     */
   /*-----------------------------------------------*/
-  /*
+
    int fdTillPlot;
    std::string plotFifo = "/tmp/plot";
    mkfifo(plotFifo.c_str(), 0666);
     
    std::string plotFifoString = "0.000000000 0.000000000 0.00";
-*/
+
   
   /*---------------------------------------------------*/
   /*    START PÅ INLÄSNING AV DATA FRÅN KAMERAFILEN    */
@@ -439,7 +439,7 @@ bool wheelOdometry::Init() {
   /*---------------------------------------------------*/
   while (apollo::cyber::OK()) {
   
-    fd2fifo = open(grupp2fifo.c_str(), O_WRONLY);
+  fd2fifo = open(grupp2fifo.c_str(), O_WRONLY);
   //  fdTillPlot = open(plotFifo.c_str(), O_WRONLY);
   
     /*----------------------------------------------------*/
@@ -553,15 +553,15 @@ bool wheelOdometry::Init() {
       //AERROR<< "hit?";
 
         t_wo = t_wo + step;
-        Eigen::Vector3d t_cam(0.9*cos(theta), 0.9*sin(theta), 0);
-        t_wo_cam = t_wo + t_cam;
+        Eigen::Vector3d t_cam(0, 0.9, 0);
+        t_wo_cam = t_wo + R_GA * R_AB * R_KB.transpose() * t_cam;
 
     /*-------------------------------------------------------*/
     /*     SLUT PÅ BERÄKNING AV POSSITION MED HJULODOMETRI   */
     /*-------------------------------------------------------*/
 
     // logVector("t_GA - R_GA * R_AB * t_BA",t_GA - R_GA * R_AB * t_BA);
-    logVector("t_wo + t_wo_cam",t_wo_cam);
+    logVector("t_wo_cam", t_wo_cam);
     logTime();
     std::cout << "Theta" << std::endl;
     std::cout << theta << std::endl;
@@ -578,9 +578,9 @@ bool wheelOdometry::Init() {
 	   write(fd2fifo, writePipe.c_str(),writePipe.size());
 	   close(fd2fifo);
 
-  //  plotFifoString = dToString(-t_wo_cam(1))+" "+dToString(t_wo_cam(0))+" "+dToString(theta) + ",";
-	//   write(fdTillPlot, plotFifoString.c_str(),plotFifoString.size());
-	 //  close(fdTillPlot);
+    plotFifoString = dToString(t_wo_cam(0))+" "+dToString(t_wo_cam(1))+" "+dToString(theta) + ",";
+	   write(fdTillPlot, plotFifoString.c_str(),plotFifoString.size());
+	   close(fdTillPlot);
   }
   
    unlink(grupp2fifo.c_str());
